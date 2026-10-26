@@ -21,7 +21,7 @@ namespace RidenDongle
 class RidenScpi
 {
   public:
-    explicit RidenScpi(RidenModbus* ridenModbus, uint16_t port = DEFAULT_SCPI_PORT) : _ridenModbus(ridenModbus), _tcpServer(port), _port(port) {}
+    explicit RidenScpi(RidenModbus* ridenModbus, uint16_t port = DEFAULT_SCPI_PORT) : _ridenModbus(ridenModbus), _port(port), _tcpServer(port) {}
 
     bool begin();
     bool loop();

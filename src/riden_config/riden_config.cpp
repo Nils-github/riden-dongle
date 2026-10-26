@@ -85,7 +85,7 @@ bool RidenConfig::begin()
         LOG_F("Loaded configuration\r\n");
         LOG_F("\tTimezone: %s\r\n", tz_name.c_str());
         LOG_F("\tPortal on boot: %s\r\n", (config_portal_on_boot) ? "Yes" : "No");
-        LOG_F("\tUART baudrate: %u\r\n", uart_baudrate);
+        LOG_F("\tUART baudrate: %lu\r\n", uart_baudrate);
     }
 
     return success;
@@ -162,7 +162,7 @@ bool RidenConfig::commit()
     LOG_F("Saving configuration (%u bytes)\r\n", sizeof(config));
     LOG_F("\tTimezone: %s\r\n", config.tz_name);
     LOG_F("\tPortal on boot: %s\r\n", (config.config_portal_on_boot) ? "Yes" : "No");
-    LOG_F("\tUART baudrate: %u\r\n", config.uart_baudrate);
+    LOG_F("\tUART baudrate: %lu\r\n", config.uart_baudrate);
     EEPROM.put(0, config);
     bool success = EEPROM.commit();
     if (success) {

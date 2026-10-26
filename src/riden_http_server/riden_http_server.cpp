@@ -14,6 +14,9 @@
 #include <vxi11_server/vxi_server.h>
 #include <ESPmDNS.h>
 #include <TinyTemplateEngineMemoryReader.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <list>
 
 using namespace RidenDongle;
@@ -123,9 +126,9 @@ RidenHttpServer::RidenHttpServer(RidenModbus* modbus, RidenScpi* scpi, RidenModb
 void RidenHttpServer::advertiseMDNS()
 {
     if (/*MDNS.isRunning() && */ _modbus->is_connected()) {
-        auto lxi_service = MDNS.addService("lxi", "tcp", port()); // allows discovery by lxi-tools
+        MDNS.addService("lxi", "tcp", port()); // allows discovery by lxi-tools
         MDNS.addServiceTxt("lxi", "tcp", "path", "/");
-        auto http_service = MDNS.addService("http", "tcp", port());
+        MDNS.addService("http", "tcp", port());
         MDNS.addServiceTxt("http", "tcp",  "path", "/");
     }
 }
@@ -422,7 +425,7 @@ void RidenHttpServer::handle_config_post(AsyncWebServerRequest *request)
     String uart_baudrate_string = request->arg("uart_baudrate");
     uint32_t uart_baudrate = std::strtoull(uart_baudrate_string.c_str(), nullptr, 10);
     LOG_F("Selected timezone: %s\r\n", tz.c_str());
-    LOG_F("Selected baudrate: %u\r\n", uart_baudrate);
+    LOG_F("Selected baudrate: %lu\r\n", uart_baudrate);
     riden_config.set_timezone_name(tz);
     riden_config.set_uart_baudrate(uart_baudrate);
     riden_config.commit();
@@ -510,7 +513,6 @@ void RidenHttpServer::handle_status_get(AsyncWebServerRequest *request)
         s += "}";
         request->send(200, "application/json", s);
     } else {
-        AsyncResponseStream *response = request->beginResponseStream("text/plain");
         request->send(500, "text/plain", "Not connected to power supply");
     }
 }
@@ -786,7 +788,7 @@ const char *RidenHttpServer::get_serial_number()
     static char serial_number_string[10];
     uint32_t serial_number;
     _modbus->get_serial_number(serial_number);
-    sprintf(serial_number_string, "%08u", serial_number);
+    sprintf(serial_number_string, "%08lu", serial_number);
     return serial_number_string;
 }
 

@@ -20,12 +20,16 @@ void RidenStatusClass::begin(AsyncWebServer *server, RidenModbus *modbus, const 
 
     _ws->onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
         switch (type) {
+        case WS_EVT_PING:
+        case WS_EVT_PONG:
+        case WS_EVT_ERROR:
+            break;
         case WS_EVT_CONNECT:
-            Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+            Serial.printf("WebSocket client #%lu connected from %s\n", client->id(), client->remoteIP().toString().c_str());
             client->setCloseClientOnQueueFull(false);
             break;
         case WS_EVT_DISCONNECT:
-            Serial.printf("WebSocket client #%u disconnected\n", client->id());
+            Serial.printf("WebSocket client #%lu disconnected\n", client->id());
             break;
         case WS_EVT_DATA:
             // AwsFrameInfo *info = (AwsFrameInfo*)arg;

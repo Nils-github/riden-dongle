@@ -46,7 +46,7 @@ void VXI_Server::begin(bool bNext)
         if (vxi_port.is_noncyclic()) return; // no need to change port, and the rest is already done
 
         // counter is cyclic, so we need to stop the server and rotate to the next port
-        LOG_F("Stop Listening for VXI commands on TCP port %u\n", (uint32_t)vxi_port);
+        LOG_F("Stop Listening for VXI commands on TCP port %lu\n", (uint32_t)vxi_port);
         _tcp_server.stop();
 
         /*  Note that vxi_port is not an ordinary uint32_t. It is
@@ -61,7 +61,7 @@ void VXI_Server::begin(bool bNext)
 
     _tcp_server.begin(vxi_port);
 
-    LOG_F("Listening for VXI commands on TCP port %u\n", (uint32_t)vxi_port);
+    LOG_F("Listening for VXI commands on TCP port %lu\n", (uint32_t)vxi_port);
 }
 
 void VXI_Server::advertiseMDNS()
@@ -69,7 +69,7 @@ void VXI_Server::advertiseMDNS()
     if (vxi_port.is_noncyclic()) {
       //  if (MDNS.isRunning()) {
             LOG_LN("VXI_Server advertising as vxi-11.");
-            auto scpi_service = MDNS.addService("vxi-11", "tcp", (uint32_t)vxi_port);
+            MDNS.addService("vxi-11", "tcp", (uint32_t)vxi_port);
             MDNS.addServiceTxt("vxi-11", "tcp", "version", SCPI_STD_VERSION_REVISION);
       //  }
     }
@@ -93,7 +93,7 @@ void VXI_Server::loop()
         }
 
         if (bClose) {
-            LOG_F("Closing VXI connection on port %u\n", (uint32_t)vxi_port);
+            LOG_F("Closing VXI connection on port %lu\n", (uint32_t)vxi_port);
             /*  this method will stop the _client and the _tcp_server, then rotate
                 to the next port (within the specified range) and restart the
                 _tcp_server to listen on that port.  */
@@ -104,7 +104,7 @@ void VXI_Server::loop()
         _client = _tcp_server.accept(); // see if a _client is available (data has been sent on port)
 
         if (_client) {
-            LOG_F("\nVXI connection established on port %u\n", (uint32_t)vxi_port);
+            LOG_F("\nVXI connection established on port %lu\n", (uint32_t)vxi_port);
         }
     }
 }
@@ -117,7 +117,7 @@ bool VXI_Server::handle_packet()
     if (vxi_request->program != rpc::VXI_11_CORE) {
         rc = rpc::PROG_UNAVAIL;
 
-        LOG_F("ERROR: Invalid program (expected VXI_11_CORE = 0x607AF; received 0x%08x)\n", (uint32_t)(vxi_request->program));
+        LOG_F("ERROR: Invalid program (expected VXI_11_CORE = 0x607AF; received 0x%08lx)\n", (uint32_t)(vxi_request->program));
 
     } else
         switch (vxi_request->procedure) {
@@ -135,7 +135,7 @@ bool VXI_Server::handle_packet()
             bClose = true;
             break;
         default:
-            LOG_F("Invalid VXI-11 procedure (received %u)\n", (uint32_t)(vxi_request->procedure));
+            LOG_F("Invalid VXI-11 procedure (received %lu)\n", (uint32_t)(vxi_request->procedure));
             rc = rpc::PROC_UNAVAIL;
             break;
         }
@@ -173,7 +173,7 @@ void VXI_Server::create_link()
     }
 
     create_request->data[create_request->data_len] = 0;
-    LOG_F("CREATE LINK request from \"%s\" on port %u\n", create_request->data, (uint32_t)vxi_port);
+    LOG_F("CREATE LINK request from \"%s\" on port %lu\n", create_request->data, (uint32_t)vxi_port);
     /*  Generate the response  */
     create_response->rpc_status = rpc::SUCCESS;
     create_response->error = rpc::NO_ERROR;
@@ -185,7 +185,7 @@ void VXI_Server::create_link()
 
 void VXI_Server::destroy_link()
 {
-    LOG_F("DESTROY LINK on port %u\n", (uint32_t)vxi_port);
+    LOG_F("DESTROY LINK on port %lu\n", (uint32_t)vxi_port);
     destroy_response->rpc_status = rpc::SUCCESS;
     destroy_response->error = rpc::NO_ERROR;
     send_vxi_packet(_client, sizeof(destroy_response_packet));
@@ -197,11 +197,11 @@ void VXI_Server::read()
     // This is where we read from the device
     char outbuffer[256];
     size_t len = 0;
-    scpi_result_t rv = _scpi_handler->read(outbuffer, &len, sizeof(outbuffer));
+    _scpi_handler->read(outbuffer, &len, sizeof(outbuffer));
 
     // FIXME handle error codes, maybe even pick up errors from the SCPI Parser
 
-    LOG_F("READ DATA on port %u; data sent = %.*s\n", (uint32_t)vxi_port, (int)len, outbuffer);
+    LOG_F("READ DATA on port %lu; data sent = %.*s\n", (uint32_t)vxi_port, (int)len, outbuffer);
     read_response->rpc_status = rpc::SUCCESS;
     read_response->error = rpc::NO_ERROR;
     read_response->reason = rpc::END;
@@ -221,7 +221,7 @@ void VXI_Server::write()
         len--;
     }
     write_request->data[len] = 0;
-    LOG_F("WRITE DATA on port %u = \"%.*s\"\n", (uint32_t)vxi_port, (int)len, write_request->data);
+    LOG_F("WRITE DATA on port %lu = \"%.*s\"\n", (uint32_t)vxi_port, (int)len, write_request->data);
     /*  Parse and respond to the SCPI command  */
     _scpi_handler->write(write_request->data, len);
 

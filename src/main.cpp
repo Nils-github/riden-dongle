@@ -129,12 +129,12 @@ bool StartServices()
     if (riden_modbus->is_connected()) {
         uint32_t serial_number;
         riden_modbus->get_serial_number(serial_number);
-        sprintf(hostname, "%s-%08u", riden_modbus->get_type().c_str(), serial_number);
+        sprintf(hostname, "%s-%08lu", riden_modbus->get_type().c_str(), serial_number);
         LOG("Hostname = ");
         LOG_LN(hostname);
 
         LOG("Setup Wifi...");
-        bool res = SetupWifi(hostname);
+        SetupWifi(hostname);
         LOG_LN("Start SCPI");
         riden_scpi->begin();
         LOG_LN("Start Modbus bridge");
@@ -151,7 +151,7 @@ bool StartServices()
         digitalWrite(LED_BUILTIN, HIGH);
 
         LOG_LN("MDNS: Add services");
-        auto arduino_service = MDNS.addService("arduino", "tcp", 80);
+        MDNS.addService("arduino", "tcp", 80);
         MDNS.addServiceTxt("arduino", "tcp", "app_version", RidenDongle::version_string);
         if (RidenDongle::build_time != nullptr) {
             MDNS.addServiceTxt("arduino", "tcp", "build_date", RidenDongle::build_time);
@@ -165,7 +165,7 @@ bool StartServices()
 
         connected = true;
     } else {
-        bool res = SetupWifi(nullptr);
+        SetupWifi(nullptr);
 
         led_ticker.attach(0.1, tick);
         connected = false;
@@ -176,8 +176,6 @@ bool StartServices()
 /// @brief Init
 bool InitServices()
 {
-    byte devId = 0;
-
     // set default logger callback
     Logger.SetLogger([](const char *logString) {
         WebSerial.println(logString);
@@ -351,7 +349,7 @@ void SetupWebSerialCommands()
                 } else if (subcommand.equals("status")) {
                     DisplayServicesStatus();
                 } else if (subcommand.equals("stop")) {
-//                    free(http_server);
+                //     free(http_server);
                 //     free(rpc_bind_server);
                 //     free(scpi_handler);
                 //     free(modbus_bridge);
@@ -359,7 +357,7 @@ void SetupWebSerialCommands()
                 //     free(riden_modbus);
                 } else if (subcommand.equals("start"))
                 {
-                    bool started = StartServices();
+                    StartServices();
                     DisplayServicesStatus();
                 }
 
@@ -374,8 +372,8 @@ void SetupWebSerialCommands()
         isSafemode = false;
         }
 
-        debug(WebSerial.printf("%d ms\n", millis() - ts));
-});
+        debug(WebSerial.printf("%ld ms\n", millis() - ts));
+    });
 }
 
 void failsafeMode()
@@ -450,7 +448,7 @@ void setup()
         attachInterrupt(digitalPinToInterrupt(enPin), enPinStateChangeIntrHandler, CHANGE);
     }
     // init devices
-    bool initRes = InitServices();
+    InitServices();
     // Logger.Log("v1.4");
 
     // create FreeRTOS tasks
