@@ -154,8 +154,9 @@
       <h3 class="drag-handle">Temperatures</h3>
       <p>System temp : <span id="system_temperature_celsius">-</span>°C / <span
           id="system_temperature_fahrenheit">-</span>°F</p>
-      <p>Probe temp : <span id="probe_temperature_celsius">-</span>°C / <span
-          id="probe_temperature_fahrenheit">-</span>°F</p>
+      <p>Probe temp : <span id="probe_temperature_celsius">-</span><span
+          id="probe_temperature_celsius_unit">°C</span><span id="probe_temperature_separator"> / </span><span
+          id="probe_temperature_fahrenheit">-</span><span id="probe_temperature_fahrenheit_unit">°F</span></p>
       <div class="resize-handle"></div>
     </div>
 
@@ -376,8 +377,13 @@
 
         document.getElementById('system_temperature_celsius').textContent = data.system_temperature_celsius;
         document.getElementById('system_temperature_fahrenheit').textContent = data.system_temperature_fahrenheit;
-        document.getElementById('probe_temperature_celsius').textContent = data.probe_temperature_celsius;
-        document.getElementById('probe_temperature_fahrenheit').textContent = data.probe_temperature_fahrenheit;
+        const probeUnavailable = Number(data.probe_temperature_celsius) === -191 ||
+          Number(data.probe_temperature_fahrenheit) === -312;
+        document.getElementById('probe_temperature_celsius').textContent = probeUnavailable ? '-' : data.probe_temperature_celsius;
+        document.getElementById('probe_temperature_fahrenheit').textContent = probeUnavailable ? '-' : data.probe_temperature_fahrenheit;
+        document.getElementById('probe_temperature_celsius_unit').hidden = probeUnavailable;
+        document.getElementById('probe_temperature_separator').hidden = probeUnavailable;
+        document.getElementById('probe_temperature_fahrenheit_unit').hidden = probeUnavailable;
         document.getElementById('voltage_set').textContent = data.voltage_set;
         document.getElementById('current_set').textContent = data.current_set;
         document.getElementById('voltage_out').textContent = data.voltage_out;
