@@ -447,7 +447,7 @@ scpi_result_t RidenScpi::SourceVoltage(scpi_t *context)
 {
     RidenScpi *ridenScpi = static_cast<RidenScpi *>(context->user_context);
 
-    scpi_choice_def_t special;
+    scpi_choice_def_t special = {};
     scpi_number_t value;
 
     LOG_F("SourceVoltage command\n");
@@ -500,7 +500,7 @@ scpi_result_t RidenScpi::SourceCurrent(scpi_t *context)
 {
     RidenScpi *ridenScpi = static_cast<RidenScpi *>(context->user_context);
 
-    scpi_choice_def_t special;
+    scpi_choice_def_t special = {};
     scpi_number_t value;
 
     if (!SCPI_ParamNumber(context, &special, &value, TRUE)) {
@@ -621,7 +621,7 @@ scpi_result_t RidenScpi::SourceVoltageLimit(scpi_t *context)
 {
     RidenScpi *ridenScpi = static_cast<RidenScpi *>(context->user_context);
 
-    scpi_choice_def_t special;
+    scpi_choice_def_t special = {};
     scpi_number_t value;
 
     if (!SCPI_ParamNumber(context, &special, &value, TRUE)) {
@@ -643,7 +643,7 @@ scpi_result_t RidenScpi::SourceCurrentLimit(scpi_t *context)
 {
     RidenScpi *ridenScpi = static_cast<RidenScpi *>(context->user_context);
 
-    scpi_choice_def_t special;
+    scpi_choice_def_t special = {};
     scpi_number_t value;
 
     if (!SCPI_ParamNumber(context, &special, &value, TRUE)) {
@@ -754,7 +754,7 @@ bool RidenScpi::begin()
     uint16_t firmware_version;
     _ridenModbus->get_firmware_version(firmware_version);
     memcpy(idn2, type.c_str(), type.length());
-    sprintf(idn3, "%08u", serial_number);
+    sprintf(idn3, "%08lu", serial_number);
     sprintf(idn4, "%u.%u", firmware_version / 100u, firmware_version % 100u);
 
     SCPI_Init(&scpi_context,
@@ -779,7 +779,7 @@ bool RidenScpi::begin()
 void RidenScpi::advertiseMDNS()
 {
     LOG_LN("RidenScpi advertising as scpi-raw.");
-    auto scpi_service = MDNS.addService("scpi-raw", "tcp", port());
+    MDNS.addService("scpi-raw", "tcp", port());
     MDNS.addServiceTxt("scpi-raw", "tcp", "version", SCPI_STD_VERSION_REVISION);
 }
 

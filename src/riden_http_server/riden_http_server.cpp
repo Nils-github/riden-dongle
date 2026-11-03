@@ -154,8 +154,8 @@ bool RidenHttpServer::begin()
     ElegantOTA.begin(_server);
     RidenStatus.begin(_server, _modbus);
 
-    _server->on("/status", HTTP_GET, [this](AsyncWebServerRequest *request)
-                { this->handle_root_get(request); });
+    _server->on("/info", HTTP_GET, [this](AsyncWebServerRequest *request)
+                { this->handle_info_get(request); });
     _server->on("/psu/", HTTP_GET, [this](AsyncWebServerRequest *request)
                 { this->handle_psu_get(request); });
     _server->on("/config", HTTP_GET, [this](AsyncWebServerRequest *request)
@@ -258,6 +258,12 @@ String RidenHttpServer::_htmlProcessor(const String &var)
 
 void RidenHttpServer::_handlePage(AsyncWebServerRequest *request, const char *pagePath)
 {
+  if (!LittleFS.exists(pagePath))
+  {
+    request->send(404, "text/plain", "Web page not found in LittleFS.");
+    return;
+  }
+
   request->send(LittleFS, pagePath, String(), false, [this](const String &str)
                 { return this->_htmlProcessor(str); });
 }
@@ -284,6 +290,29 @@ uint16_t RidenHttpServer::port()
 }
 
 void RidenHttpServer::handle_root_get(AsyncWebServerRequest *request)
+{
+    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    response->print(HTML_HEADER);
+    response->print("<div class='box'>");
+    response->print("<a style='float:right' href='.'>Refresh</a><h2>Power Supply Details</h2>");
+    response->print("<table class='info'>");
+    response->print("<tbody>");
+
+    _server->on("/redirect/internal", HTTP_GET, [](AsyncWebServerRequest *request){    request->redirect("/hello"); });
+
+    response->print("</tbody>");
+    response->print("</table>");
+    response->print("</div>");
+    if (_modbus->is_connected()) {
+        send_dongle_info(response);
+    } else {
+        response->print(HTML_NO_CONNECTION_BODY);
+    }
+    response->print(HTML_FOOTER);
+    request->send(response);
+}
+
+void RidenHttpServer::handle_info_get(AsyncWebServerRequest *request)
 {
     AsyncResponseStream *response = request->beginResponseStream("text/html");
     response->print(HTML_HEADER);
@@ -791,4 +820,3 @@ const char *RidenHttpServer::get_serial_number()
     sprintf(serial_number_string, "%08lu", serial_number);
     return serial_number_string;
 }
-

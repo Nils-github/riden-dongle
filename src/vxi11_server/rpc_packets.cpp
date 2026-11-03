@@ -30,7 +30,7 @@ uint32_t get_bind_packet(WiFiUDP &udp)
     uint32_t len = udp.read(udp_request_packet_buffer, UDP_READ_SIZE);
 
     if (len > 0) {
-        LOG_F("\nReceived %d bytes from %s: %d\n", len, udp.remoteIP().toString().c_str(), udp.remotePort());
+        LOG_F("\nReceived %ld bytes from %s: %d\n", len, udp.remoteIP().toString().c_str(), udp.remotePort());
         LOG_DUMP(udp_request_packet_buffer, len)
         LOG_F("\n");
     }
@@ -61,7 +61,7 @@ uint32_t get_bind_packet(WiFiClient &tcp)
         len = std::min(len, (uint32_t)(TCP_READ_SIZE - 4)); // do not read more than the buffer can hold
 
         tcp.readBytes(tcp_request_packet_buffer, len);
-        LOG_F("\nReceived %d bytes from %s: %d\n", len + 4, tcp.remoteIP().toString().c_str(), tcp.remotePort());
+        LOG_F("\nReceived %ld bytes from %s: %d\n", len + 4, tcp.remoteIP().toString().c_str(), tcp.remotePort());
         LOG_DUMP(tcp_request_prefix_buffer, len + 4)
         LOG_F("\n");
     }
@@ -94,7 +94,7 @@ uint32_t get_vxi_packet(WiFiClient &tcp)
 
         tcp.readBytes(vxi_request_packet_buffer, len);
 
-        LOG_F("\nReceived %d bytes from %s: %d\n", len + 4, tcp.remoteIP().toString().c_str(), tcp.remotePort());
+        LOG_F("\nReceived %ld bytes from %s: %d\n", len + 4, tcp.remoteIP().toString().c_str(), tcp.remotePort());
         LOG_DUMP(vxi_request_prefix_buffer, len + 4)
         LOG_F("\n");
     }
@@ -119,7 +119,7 @@ void send_bind_packet(WiFiUDP &udp, uint32_t len)
     udp.write(udp_response_packet_buffer, len);
     udp.endPacket();
 
-    LOG_F("\nSent %d bytes to %s:%d\n", len, udp.remoteIP().toString().c_str(), udp.remotePort());
+    LOG_F("\nSent %ld bytes to %s:%d\n", len, udp.remoteIP().toString().c_str(), udp.remotePort());
     LOG_DUMP(udp_response_packet_buffer, len)
     LOG_F("\n");
 }
@@ -151,7 +151,7 @@ void send_bind_packet(WiFiClient &tcp, uint32_t len)
     tcp.write(tcp_response_prefix_buffer, len + 4); // add 4 to the length to account for the tcp_response_prefix
     tcp.flush();
 
-    LOG_F("\nSent %d bytes to %s:%d\n", len, tcp.remoteIP().toString().c_str(), tcp.remotePort());
+    LOG_F("\nSent %ld bytes to %s:%d\n", len, tcp.remoteIP().toString().c_str(), tcp.remotePort());
     LOG_DUMP(tcp_response_prefix_buffer, len + 4)
     LOG_F("\n");
 }
@@ -186,7 +186,7 @@ void send_vxi_packet(WiFiClient &tcp, uint32_t len)
     tcp.write(vxi_response_prefix_buffer, len + 4); // add 4 to the length to account for the vxi_response_prefix
     tcp.flush();
 
-    LOG_F("\nSent %d bytes to %s:%d\n", len, tcp.remoteIP().toString().c_str(), tcp.remotePort());
+    LOG_F("\nSent %ld bytes to %s:%d\n", len, tcp.remoteIP().toString().c_str(), tcp.remotePort());
     LOG_DUMP(vxi_response_prefix_buffer, len + 4)
     LOG_F("\n");
 }

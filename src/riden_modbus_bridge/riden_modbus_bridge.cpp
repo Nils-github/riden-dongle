@@ -43,7 +43,7 @@ bool RidenModbusBridge::begin()
 
 void RidenModbusBridge::advertiseMDNS()
 {
-    auto modbus_service = MDNS.addService("modbus", "tcp", MODBUSTCP_PORT);
+    MDNS.addService("modbus", "tcp", MODBUSTCP_PORT);
     MDNS.addServiceTxt("modbus", "tcp", "unitid", String(MODBUS_ADDRESS));
 }
 

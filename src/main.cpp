@@ -46,7 +46,7 @@ static bool did_update_time = false;
 static bool connected = false;
 volatile bool isSafemode = false;
 static bool useEnPin = false;
-static int enPin = 5;
+static int enPin = -1;
 volatile byte enPinState = LOW;
 volatile bool enPinStateChanged = false;
 
@@ -403,8 +403,8 @@ void setup()
     delay(1000);
 #endif
 
-    // start filesystem
-    bool littleFSstatus = LittleFS.begin();
+    // start filesystem and if not found format partition
+    bool littleFSstatus = LittleFS.begin(true);
     // web server (ota + serial)
     http_server->begin();
     delay(500);

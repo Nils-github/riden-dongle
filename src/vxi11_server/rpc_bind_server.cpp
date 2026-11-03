@@ -93,11 +93,11 @@ void RPC_Bind_Server::process_request(bool onUDP)
     if (rpc_request->program != rpc::PORTMAP) {
         rc = rpc::PROG_UNAVAIL;
 
-        LOG_F("ERROR: Invalid program (expected PORTMAP = 0x186A0; received 0x%08x)\n", (uint32_t)(rpc_request->program));
+        LOG_F("ERROR: Invalid program (expected PORTMAP = 0x186A0; received 0x%08lx)\n", (uint32_t)(rpc_request->program));
     } else if (rpc_request->procedure != rpc::GET_PORT) {
         rc = rpc::PROC_UNAVAIL;
 
-        LOG_F("ERROR: Invalid procedure (expected GET_PORT = 3; received %u)\n", (uint32_t)(rpc_request->procedure));
+        LOG_F("ERROR: Invalid procedure (expected GET_PORT = 3; received %lu)\n", (uint32_t)(rpc_request->procedure));
     } else {
         // i.e., if it is a valid PORTMAP request
         LOG_F("PORTMAP command received on %s port %d; ", (onUDP ? "UDP" : "TCP"), rpc::BIND_PORT);
@@ -114,7 +114,7 @@ void RPC_Bind_Server::process_request(bool onUDP)
             rc = rpc::GARBAGE_ARGS; // not really the appropriate response, but we need to signal failure somehow!
             LOG_F("ERROR: PORTMAP failed: vxi_server not available.\n");
         } else {
-            LOG_F("assigned to port %d\n", port);
+            LOG_F("assigned to port %ld\n", port);
         }
     }
 

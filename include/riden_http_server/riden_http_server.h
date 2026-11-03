@@ -29,6 +29,7 @@ class RidenHttpServer
     VXI_Server* _vxi_server;
 
     void handle_root_get(AsyncWebServerRequest *request);
+    void handle_info_get(AsyncWebServerRequest *request);
     void handle_psu_get(AsyncWebServerRequest *request);
     void handle_config_get(AsyncWebServerRequest *request);
     void handle_config_post(AsyncWebServerRequest *request);
