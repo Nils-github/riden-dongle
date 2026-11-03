@@ -182,11 +182,11 @@ bool InitServices()
     });
 
     // Wait for serial
-    // Serial.begin(115200);
-    Serial.begin(9600);
+    Serial.begin(115200);
     while (!Serial)
         delay(10);
 
+    LOG("SdkVersion = ");
     LOG_LN(ESP.getSdkVersion());
 
     riden_config.begin();
