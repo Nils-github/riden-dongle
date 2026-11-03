@@ -152,7 +152,7 @@ bool RidenHttpServer::begin()
 
     WebSerial.begin(_server);
     ElegantOTA.begin(_server);
-    RidenStatus.begin(_server, _modbus);
+    RidenStatus.begin(_server, _modbus, "/riden_status");
 
     _server->on("/info", HTTP_GET, [this](AsyncWebServerRequest *request)
                 { this->handle_info_get(request); });

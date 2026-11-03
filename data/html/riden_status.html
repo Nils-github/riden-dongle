@@ -114,6 +114,7 @@
       margin: 0;
       font-size: 1em;
       user-select: none;
+      touch-action: none;
       border-bottom: 1px dashed #ff4500;
       padding-bottom: 5px;
       margin-bottom: 10px;
@@ -126,12 +127,12 @@
 
     .resize-handle {
       position: absolute;
-      width: 12px;
-      height: 12px;
-      right: 4px;
-      bottom: 4px;
-      pointer-events: none;
-      /* pour laisser interact.js gérer le resize */
+      width: 18px;
+      height: 18px;
+      right: 2px;
+      bottom: 2px;
+      cursor: nwse-resize;
+      touch-action: none;
       background-image:
         linear-gradient(135deg, transparent 50%, #ff4500 50%),
         linear-gradient(135deg, transparent 60%, #ff4500 60%),
@@ -205,10 +206,12 @@
 
   </div>
   <script>
-    $(document).ready(function () {
-      const ctx = document.getElementById('sensorChart').getContext('2d');
-      Chart.register(ChartStreaming);
-      const chart = new Chart(ctx, {
+    document.addEventListener('DOMContentLoaded', function () {
+      let chart = null;
+      try {
+        const ctx = document.getElementById('sensorChart').getContext('2d');
+        Chart.register(ChartStreaming);
+        chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels: [], // Time
@@ -315,52 +318,62 @@
             }
           }
         }
-      });
+        });
+      } catch (error) {
+        console.error('Unable to initialize the status chart:', error);
+      }
 
 
       const MAX_POINTS = 300;
 
-      const socket = new WebSocket('ws://' + window.location.hostname + '/ws_ridenstatus');
-      //const socket = new WebSocket('ws://192.168.100.186/ws_ridenstatus');
+      const socketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const socket = new WebSocket(socketProtocol + '//' + window.location.host + '/ws_ridenstatus');
 
       socket.onmessage = function (event) {
-        const data = JSON.parse(event.data);
-        const now = new Date().getTime();
-
-        // Add to chart
-        chart.data.datasets[0].data.push({ x: now, y: data.voltage_set });
-        chart.data.datasets[1].data.push({ x: now, y: data.voltage_out });
-        chart.data.datasets[2].data.push({ x: now, y: data.current_set });
-        chart.data.datasets[3].data.push({ x: now, y: data.current_out });
-
-        // Trim data
-        if (chart.data.datasets[0].data.length > MAX_POINTS) {
-          chart.data.datasets[0].data.shift();
-          chart.data.datasets[1].data.shift();
-          chart.data.datasets[2].data.shift();
-          chart.data.datasets[3].data.shift();
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (error) {
+          console.error('Invalid status data received:', error);
+          return;
         }
 
-        chart.data.datasets.forEach((dataset) => {
-          chart.options.scales[dataset.yAxisID].suggestedMax = -1.0;
-        });
+        if (chart) {
+          const now = new Date().getTime();
+          chart.data.datasets[0].data.push({ x: now, y: data.voltage_set });
+          chart.data.datasets[1].data.push({ x: now, y: data.voltage_out });
+          chart.data.datasets[2].data.push({ x: now, y: data.current_set });
+          chart.data.datasets[3].data.push({ x: now, y: data.current_out });
 
-        chart.data.datasets.forEach((dataset) => {
-          const values = dataset.data.map(point => point.y);
-          if (values.length === 0) return;
+          if (chart.data.datasets[0].data.length > MAX_POINTS) {
+            chart.data.datasets[0].data.shift();
+            chart.data.datasets[1].data.shift();
+            chart.data.datasets[2].data.shift();
+            chart.data.datasets[3].data.shift();
+          }
 
-          const min = 0;
-          const max = Math.max(...values);
-          const range = max - min || 1;
-          const margin = range * 0.2;
+          chart.data.datasets.forEach((dataset) => {
+            chart.options.scales[dataset.yAxisID].suggestedMax = -1.0;
+          });
 
-          const axis = chart.options.scales[dataset.yAxisID];
-          axis.suggestedMin = min; // - margin;
-          var suggestedMax = max + margin;
-          axis.suggestedMax = Math.max(axis.suggestedMax, suggestedMax);
-        });
+          chart.data.datasets.forEach((dataset) => {
+            const values = dataset.data.map(point => point.y);
+            if (values.length === 0) return;
 
-        chart.update('none');
+            const min = 0;
+            const max = Math.max(...values);
+            const range = max - min || 1;
+            const margin = range * 0.2;
+
+            const axis = chart.options.scales[dataset.yAxisID];
+            axis.suggestedMin = min;
+            const suggestedMax = max + margin;
+            axis.suggestedMax = Math.max(axis.suggestedMax, suggestedMax);
+          });
+
+          chart.update('none');
+        }
+
         document.getElementById('system_temperature_celsius').textContent = data.system_temperature_celsius;
         document.getElementById('system_temperature_fahrenheit').textContent = data.system_temperature_fahrenheit;
         document.getElementById('probe_temperature_celsius').textContent = data.probe_temperature_celsius;
@@ -376,7 +389,7 @@
 
         const tableBody = document.getElementById("presetBody");
         tableBody.innerHTML = "";
-        const presets = data.presets;
+        const presets = Array.isArray(data.presets) ? data.presets : [];
         for (let i = 0; i < presets.length; i++) {
           const preset = presets[i];
           const row = document.createElement('tr');
@@ -390,6 +403,9 @@
         document.getElementById('presetsSection').style.display = 'block';
       };
 
+      socket.onerror = function (event) {
+        console.error('Status WebSocket connection failed:', event);
+      };
 
 
 
@@ -450,65 +466,92 @@
         }
       }
 
-      interact('.draggable')
-        .draggable({
-          allowFrom: '.drag-handle',
-          modifiers: [
-            interact.modifiers.snap({
-              targets: [interact.snappers.grid({ x: GRID_SIZE, y: GRID_SIZE })],
-              range: Infinity,
-              relativePoints: [{ x: 0, y: 0 }]
-              // PAS d'offset du tout
-            })
-          ],
+      let activeDrag = null;
+      document.querySelectorAll('.draggable .drag-handle').forEach(handle => {
+        handle.addEventListener('pointerdown', event => {
+          if (event.button !== 0) return;
 
+          const target = handle.closest('.draggable');
+          if (!target) return;
 
-          autoScroll: true,
-          listeners: {
-
-            move(event) {
-              const target = event.target;
-              const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-              const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-
-              target.style.transform = `translate(${x}px, ${y}px)`;
-              target.setAttribute('data-x', x);
-              target.setAttribute('data-y', y);
-            },
-            end(event) {
-              saveLayout();
-            }
-          }
-        })
-        .resizable({
-          edges: { left: false, right: true, top: false, bottom: true },
-          listeners: {
-            move(event) {
-              const target = event.target;
-              let x = parseFloat(target.getAttribute('data-x')) || 0;
-              let y = parseFloat(target.getAttribute('data-y')) || 0;
-
-              const rawWidth = event.rect.width;
-              const rawHeight = event.rect.height;
-
-              const snappedWidth = Math.round(rawWidth / GRID_SIZE) * GRID_SIZE;
-              const snappedHeight = Math.round(rawHeight / GRID_SIZE) * GRID_SIZE;
-
-              target.style.width = `${snappedWidth}px`;
-              target.style.height = `${snappedHeight}px`;
-
-              x += event.deltaRect.left;
-              y += event.deltaRect.top;
-
-              target.style.transform = `translate(${x}px, ${y}px)`;
-              target.setAttribute('data-x', x);
-              target.setAttribute('data-y', y);
-            },
-            end(event) {
-              saveLayout();
-            }
-          }
+          activeDrag = {
+            handle,
+            target,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            x: parseFloat(target.getAttribute('data-x')) || 0,
+            y: parseFloat(target.getAttribute('data-y')) || 0
+          };
+          handle.setPointerCapture(event.pointerId);
+          event.preventDefault();
         });
+
+        handle.addEventListener('pointermove', event => {
+          if (!activeDrag || activeDrag.handle !== handle || activeDrag.pointerId !== event.pointerId) return;
+
+          const x = activeDrag.x + event.clientX - activeDrag.startX;
+          const y = activeDrag.y + event.clientY - activeDrag.startY;
+          activeDrag.target.style.transform = `translate(${x}px, ${y}px)`;
+          activeDrag.target.setAttribute('data-x', x);
+          activeDrag.target.setAttribute('data-y', y);
+        });
+
+        const finishDrag = event => {
+          if (!activeDrag || activeDrag.handle !== handle || activeDrag.pointerId !== event.pointerId) return;
+
+          const x = Math.round((parseFloat(activeDrag.target.getAttribute('data-x')) || 0) / GRID_SIZE) * GRID_SIZE;
+          const y = Math.round((parseFloat(activeDrag.target.getAttribute('data-y')) || 0) / GRID_SIZE) * GRID_SIZE;
+          activeDrag.target.style.transform = `translate(${x}px, ${y}px)`;
+          activeDrag.target.setAttribute('data-x', x);
+          activeDrag.target.setAttribute('data-y', y);
+          activeDrag = null;
+          saveLayout();
+        };
+        handle.addEventListener('pointerup', finishDrag);
+        handle.addEventListener('pointercancel', finishDrag);
+      });
+
+      let activeResize = null;
+      document.querySelectorAll('.draggable .resize-handle').forEach(handle => {
+        handle.addEventListener('pointerdown', event => {
+          if (event.button !== 0) return;
+
+          const target = handle.closest('.draggable');
+          if (!target) return;
+
+          activeResize = {
+            handle,
+            target,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            width: target.offsetWidth,
+            height: target.offsetHeight
+          };
+          handle.setPointerCapture(event.pointerId);
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        handle.addEventListener('pointermove', event => {
+          if (!activeResize || activeResize.handle !== handle || activeResize.pointerId !== event.pointerId) return;
+
+          const width = Math.max(GRID_SIZE * 12, activeResize.width + event.clientX - activeResize.startX);
+          const height = Math.max(GRID_SIZE * 8, activeResize.height + event.clientY - activeResize.startY);
+          activeResize.target.style.width = `${Math.round(width / GRID_SIZE) * GRID_SIZE}px`;
+          activeResize.target.style.height = `${Math.round(height / GRID_SIZE) * GRID_SIZE}px`;
+        });
+
+        const finishResize = event => {
+          if (!activeResize || activeResize.handle !== handle || activeResize.pointerId !== event.pointerId) return;
+
+          activeResize = null;
+          saveLayout();
+        };
+        handle.addEventListener('pointerup', finishResize);
+        handle.addEventListener('pointercancel', finishResize);
+      });
 
       document.getElementById('resetLayoutBtn').addEventListener('click', function () {
         loadLayout(defaultLayout);

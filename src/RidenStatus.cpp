@@ -2,21 +2,27 @@
 #include <assert.h>
 #include <LittleFS.h>
 #include <riden_modbus/riden_modbus_registers.h>
+#include <cmath>
 
 using namespace RidenDongle;
 
 RidenStatusClass RidenStatus;
+
+static String jsonNumber(double value)
+{
+    return std::isfinite(value) ? String(value) : "null";
+}
 
 void RidenStatusClass::begin(AsyncWebServer *server, RidenModbus *modbus, const char *url)
 {
     _server = server;
     _modbus = modbus;
 
+    if (_ws) {
+        delete _ws;
+        _ws = nullptr;
+    }
     _ws = new AsyncWebSocket("/ws_ridenstatus");
-
-    _server->on(url, HTTP_GET, [this](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/riden_status.html", String());
-    });
 
     _ws->onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
         switch (type) {
@@ -40,7 +46,32 @@ void RidenStatusClass::begin(AsyncWebServer *server, RidenModbus *modbus, const 
         }
     });
 
-    _server->addHandler(_ws);
+    if (_ws != nullptr) {
+        _server->addHandler(_ws);
+    }
+
+    if (url && *url) {
+        String statusRoute = String(url);
+        String statusHtmlRoute = statusRoute.endsWith(".html") ? statusRoute : statusRoute + ".html";
+
+        _server->on(statusRoute.c_str(), HTTP_GET, [this](AsyncWebServerRequest *request) {
+            if (LittleFS.exists("/html/riden_status.html")) {
+                request->send(LittleFS, "/html/riden_status.html", "text/html");
+            } else {
+                request->send(404, "text/plain", "Riden status page not found.");
+            }
+        });
+
+        if (statusRoute != statusHtmlRoute) {
+            _server->on(statusHtmlRoute.c_str(), HTTP_GET, [this](AsyncWebServerRequest *request) {
+                if (LittleFS.exists("/html/riden_status.html")) {
+                    request->send(LittleFS, "/html/riden_status.html", "text/html");
+                } else {
+                    request->send(404, "text/plain", "Riden status page not found.");
+                }
+            });
+        }
+    }
 }
 
 size_t RidenStatusClass::getConnectionCount()
@@ -60,29 +91,32 @@ void RidenStatusClass::loop()
   }
 }
 
+// Serializes all values from the provided AllValues struct into a JSON string for WebSocket transmission.
+// Input: const RidenDongle::AllValues& v - the structure containing all status values.
+// Output: String - a JSON representation of all values.
 String RidenStatusClass::_serializeAllValues(const RidenDongle::AllValues& v) {
     String json = "{";
 
     // Scalars
-    json += "\"system_temperature_celsius\":" + String(v.system_temperature_celsius) + ",";
-    json += "\"system_temperature_fahrenheit\":" + String(v.system_temperature_fahrenheit) + ",";
-    json += "\"voltage_set\":" + String(v.voltage_set) + ",";
-    json += "\"current_set\":" + String(v.current_set) + ",";
-    json += "\"voltage_out\":" + String(v.voltage_out) + ",";
-    json += "\"current_out\":" + String(v.current_out) + ",";
-    json += "\"power_out\":" + String(v.power_out) + ",";
-    json += "\"voltage_in\":" + String(v.voltage_in) + ",";
+    json += "\"system_temperature_celsius\":" + jsonNumber(v.system_temperature_celsius) + ",";
+    json += "\"system_temperature_fahrenheit\":" + jsonNumber(v.system_temperature_fahrenheit) + ",";
+    json += "\"voltage_set\":" + jsonNumber(v.voltage_set) + ",";
+    json += "\"current_set\":" + jsonNumber(v.current_set) + ",";
+    json += "\"voltage_out\":" + jsonNumber(v.voltage_out) + ",";
+    json += "\"current_out\":" + jsonNumber(v.current_out) + ",";
+    json += "\"power_out\":" + jsonNumber(v.power_out) + ",";
+    json += "\"voltage_in\":" + jsonNumber(v.voltage_in) + ",";
     json += "\"keypad_locked\":" + String(v.keypad_locked ? "true" : "false") + ",";
     json += "\"protection\":" + String(static_cast<int>(v.protection)) + ",";
     json += "\"output_mode\":" + String(static_cast<int>(v.output_mode)) + ",";
     json += "\"output_on\":" + String(v.output_on ? "true" : "false") + ",";
     json += "\"current_range\":" + String(v.current_range) + ",";
     json += "\"is_battery_mode\":" + String(v.is_battery_mode ? "true" : "false") + ",";
-    json += "\"voltage_battery\":" + String(v.voltage_battery) + ",";
-    json += "\"probe_temperature_celsius\":" + String(v.probe_temperature_celsius) + ",";
-    json += "\"probe_temperature_fahrenheit\":" + String(v.probe_temperature_fahrenheit) + ",";
-    json += "\"ah\":" + String(v.ah) + ",";
-    json += "\"wh\":" + String(v.wh) + ",";
+    json += "\"voltage_battery\":" + jsonNumber(v.voltage_battery) + ",";
+    json += "\"probe_temperature_celsius\":" + jsonNumber(v.probe_temperature_celsius) + ",";
+    json += "\"probe_temperature_fahrenheit\":" + jsonNumber(v.probe_temperature_fahrenheit) + ",";
+    json += "\"ah\":" + jsonNumber(v.ah) + ",";
+    json += "\"wh\":" + jsonNumber(v.wh) + ",";
     json += "\"voltage_max\":" + String(_modbus->get_max_voltage()) + ",";
     json += "\"current_max\":" + String(_modbus->get_max_current()) + ",";
     json += "\"is_take_ok\":" + String(v.is_take_ok ? "true" : "false") + ",";
@@ -95,13 +129,19 @@ String RidenStatusClass::_serializeAllValues(const RidenDongle::AllValues& v) {
 
     // Presets as array of objects
     json += "\"presets\":[";
-    for (int i = 0; i < NUMBER_OF_PRESETS; ++i) {
+    for (size_t i = 0; i < NUMBER_OF_PRESETS; ++i) {
+        // Ensure all preset fields are initialized
+        float voltage = std::isfinite(v.presets[i].voltage) ? v.presets[i].voltage : 0.0f;
+        float current = std::isfinite(v.presets[i].current) ? v.presets[i].current : 0.0f;
+        float ovp = std::isfinite(v.presets[i].over_voltage_protection) ? v.presets[i].over_voltage_protection : 0.0f;
+        float ocp = std::isfinite(v.presets[i].over_current_protection) ? v.presets[i].over_current_protection : 0.0f;
+
         if (i > 0) json += ",";
         json += "{";
-        json += "\"voltage\":" + String(v.presets[i].voltage) + ",";
-        json += "\"current\":" + String(v.presets[i].current) + ",";
-        json += "\"over_voltage_protection\":" + String(v.presets[i].over_voltage_protection) + ",";
-        json += "\"over_current_protection\":" + String(v.presets[i].over_current_protection);
+        json += "\"voltage\":" + String(voltage) + ",";
+        json += "\"current\":" + String(current) + ",";
+        json += "\"over_voltage_protection\":" + String(ovp) + ",";
+        json += "\"over_current_protection\":" + String(ocp);
         json += "}";
     }
     json += "]";
