@@ -15,6 +15,7 @@
 #include <ESPmDNS.h>
 #include <TinyTemplateEngineMemoryReader.h>
 #include <cstdint>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <list>
@@ -36,6 +37,19 @@ static const std::list<uint32_t> uart_baudrates = {
     921600,
     1000000,
 };
+
+static bool parseFormNumber(AsyncWebServerRequest *request, const char *name, double &value)
+{
+    if (!request->hasArg(name)) {
+        return false;
+    }
+
+    String input = request->arg(name);
+    const char *start = input.c_str();
+    char *end = nullptr;
+    value = std::strtod(start, &end);
+    return end != start && *end == '\0' && std::isfinite(value);
+}
 
 static String voltage_to_string(double voltage)
 {
@@ -516,9 +530,8 @@ void RidenHttpServer::handle_control_get(AsyncWebServerRequest *request)
 void RidenHttpServer::handle_status_get(AsyncWebServerRequest *request)
 {
     AllValues all_values;
-    // get a subset of the values, reading in bulk to be fast
     // Make sure this is below 800ms, because otherwise the graph will suffer
-    if (_modbus->is_connected() && _modbus->get_all_values(all_values, true)) {
+    if (_modbus->is_connected() && RidenStatus.getAllValues(all_values)) {
         String s = "{";
         s += "\"out_on\": " + String(all_values.output_on ? "true" : "false");
         s += ",\"set_v\": " + String(all_values.voltage_set, 3);
@@ -548,41 +561,38 @@ void RidenHttpServer::handle_status_get(AsyncWebServerRequest *request)
 
 void RidenHttpServer::handle_set_i(AsyncWebServerRequest *request)
 {
-    String s = request->arg("plain");
-    double v = std::strtod(s.c_str(), nullptr);
-    if (_modbus->is_connected() && _modbus->set_current_set(v)) {
-        request->send(200, "text/plain", "OK");
+    double v;
+    if (!parseFormNumber(request, "value", v)) {
+        request->send(400, "text/plain", "Invalid current value");
+        return;
+    }
+    if (_modbus->is_connected() && RidenStatus.queueSetCurrent(v)) {
+        request->send(202, "text/plain", "Command queued");
     } else {
-        request->send(500, "text/plain", "Failed to set");
+        request->send(503, "text/plain", "Power supply unavailable or command queue full");
     }
 }
 
 void RidenHttpServer::handle_set_v(AsyncWebServerRequest *request)
 {
-    String s = request->arg("plain");
-    double v = std::strtod(s.c_str(), nullptr);
-    if (_modbus->is_connected() && _modbus->set_voltage_set(v)) {
-        request->send(200, "text/plain", "OK");
+    double v;
+    if (!parseFormNumber(request, "value", v)) {
+        request->send(400, "text/plain", "Invalid voltage value");
+        return;
+    }
+    if (_modbus->is_connected() && RidenStatus.queueSetVoltage(v)) {
+        request->send(202, "text/plain", "Command queued");
     } else {
-        request->send(500, "text/plain", "Failed to set");
+        request->send(503, "text/plain", "Power supply unavailable or command queue full");
     }
 }
 
 void RidenHttpServer::handle_toggle_out(AsyncWebServerRequest *request)
 {
-    if (_modbus->is_connected()) {
-        bool get_output_on;
-        if (!_modbus->get_output_on(get_output_on)) {
-            get_output_on = false;
-        }
-        if (_modbus->set_output_on(!get_output_on)) {
-            // and reply with full data set
-            handle_status_get(request);
-        } else {
-            request->send(500, "text/plain", "Failed to toggle output");
-        }
+    if (_modbus->is_connected() && RidenStatus.queueToggleOutput()) {
+        request->send(202, "text/plain", "Command queued");
     } else {
-        request->send(500, "text/plain", "Not connected to power supply");
+        request->send(503, "text/plain", "Power supply unavailable or command queue full");
     }
 }
 

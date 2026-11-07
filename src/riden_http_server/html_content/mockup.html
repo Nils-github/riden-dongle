@@ -1131,12 +1131,19 @@
     document.body.style.cursor = "wait";
     document.getElementById("setv").style.cursor = "wait";
     try {
-      fetch("/set_v", { method: "POST", body: v }).then((response) => {
-        document.body.style.cursor = "default";
-        document.getElementById("setv").style.cursor = "pointer";
+      fetch("/set_v", {
+        method: "POST",
+        body: new URLSearchParams({ value: v }),
+      }).then((response) => {
         if (!response.ok) {
           throw new Error("ERR: " + response.statusText);
         }
+      }).catch((e) => {
+        console.error("Error setting voltage:", e);
+        alert("Error setting voltage: " + e.message);
+      }).finally(() => {
+        document.body.style.cursor = "default";
+        document.getElementById("setv").style.cursor = "pointer";
       });
     } catch (e) {
       console.error("Error setting voltage:", e);
@@ -1156,12 +1163,19 @@
     document.body.style.cursor = "wait";
     document.getElementById("seti").style.cursor = "wait";
     try {
-      fetch("/set_i", { method: "POST", body: v }).then((response) => {
-        document.body.style.cursor = "default";
-        document.getElementById("seti").style.cursor = "pointer";
+      fetch("/set_i", {
+        method: "POST",
+        body: new URLSearchParams({ value: v }),
+      }).then((response) => {
         if (!response.ok) {
           throw new Error("ERR: " + response.statusText);
         }
+      }).catch((e) => {
+        console.error("Error setting current:", e);
+        alert("Error setting current: " + e.message);
+      }).finally(() => {
+        document.body.style.cursor = "default";
+        document.getElementById("seti").style.cursor = "pointer";
       });
     } catch (e) {
       console.error("Error setting current:", e);
@@ -1178,15 +1192,17 @@
     try {
       fetch("/toggle_out")
         .then((response) => {
-          document.body.style.cursor = "default";
-          document.getElementById("toggle").style.cursor = "pointer";
           if (!response.ok) {
             throw new Error("ERR: " + response.statusText);
           }
-          return response.text();
         })
-        .then((data) => {
-          set_data(data, false);
+        .catch((e) => {
+          console.error("Error in toggle:", e);
+          alert("Error in toggle: " + e.message);
+        })
+        .finally(() => {
+          document.body.style.cursor = "default";
+          document.getElementById("toggle").style.cursor = "pointer";
         });
     } catch (e) {
       console.error("Error in toggle:", e);

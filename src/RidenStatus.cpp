@@ -31,11 +31,11 @@ void RidenStatusClass::begin(AsyncWebServer *server, RidenModbus *modbus, const 
         case WS_EVT_ERROR:
             break;
         case WS_EVT_CONNECT:
-            Serial.printf("WebSocket client #%lu connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+            log_printf("WebSocket client #%lu connected from %s\n", client->id(), client->remoteIP().toString().c_str());
             client->setCloseClientOnQueueFull(false);
             break;
         case WS_EVT_DISCONNECT:
-            Serial.printf("WebSocket client #%lu disconnected\n", client->id());
+            log_printf("WebSocket client #%lu disconnected\n", client->id());
             break;
         case WS_EVT_DATA:
             // AwsFrameInfo *info = (AwsFrameInfo*)arg;
@@ -82,13 +82,86 @@ size_t RidenStatusClass::getConnectionCount()
 static unsigned long lasttime = 0;
 void RidenStatusClass::loop()
 {
-  unsigned long now = millis();
-  if (now - lasttime > 200) {
-      if (_started && getConnectionCount())
-        if (updateStatus(false))
-          sendStatus();
-      lasttime = now;
-  }
+    Command command;
+    if (dequeueCommand(command))
+        processCommand(command);
+
+    unsigned long now = millis();
+    if (now - lasttime > 200) {
+        if (_started && updateStatus(false)) {
+            if (getConnectionCount())
+                sendStatus();
+        }
+        lasttime = now;
+    }
+}
+
+bool RidenStatusClass::queueSetVoltage(double voltage)
+{
+    return enqueueCommand(CommandType::SetVoltage, voltage);
+}
+
+bool RidenStatusClass::queueSetCurrent(double current)
+{
+    return enqueueCommand(CommandType::SetCurrent, current);
+}
+
+bool RidenStatusClass::queueToggleOutput()
+{
+    return enqueueCommand(CommandType::ToggleOutput);
+}
+
+bool RidenStatusClass::enqueueCommand(CommandType type, double value)
+{
+    portENTER_CRITICAL(&_commandMux);
+    if (_commandCount == COMMAND_QUEUE_CAPACITY) {
+        portEXIT_CRITICAL(&_commandMux);
+        return false;
+    }
+
+    _commandQueue[_commandTail] = {type, value};
+    _commandTail = (_commandTail + 1) % COMMAND_QUEUE_CAPACITY;
+    ++_commandCount;
+    portEXIT_CRITICAL(&_commandMux);
+    return true;
+}
+
+bool RidenStatusClass::dequeueCommand(Command& command)
+{
+    portENTER_CRITICAL(&_commandMux);
+    if (_commandCount == 0) {
+        portEXIT_CRITICAL(&_commandMux);
+        return false;
+    }
+
+    command = _commandQueue[_commandHead];
+    _commandHead = (_commandHead + 1) % COMMAND_QUEUE_CAPACITY;
+    --_commandCount;
+    portEXIT_CRITICAL(&_commandMux);
+    return true;
+}
+
+void RidenStatusClass::processCommand(const Command& command)
+{
+    bool success = false;
+    switch (command.type) {
+    case CommandType::SetVoltage:
+        success = _modbus->set_voltage_set(command.value);
+        break;
+    case CommandType::SetCurrent:
+       success = _modbus->set_current_set(command.value);
+        break;
+    case CommandType::ToggleOutput: {
+        bool outputOn;
+        if (_modbus->get_output_on(outputOn))
+            success = _modbus->set_output_on(!outputOn);
+        break;
+    }
+    }
+
+    if (!success) {
+        log_printf("Queued Modbus command failed\n");
+    }
 }
 
 // Serializes all values from the provided AllValues struct into a JSON string for WebSocket transmission.
@@ -154,12 +227,36 @@ String RidenStatusClass::_serializeAllValues(const RidenDongle::AllValues& v) {
 
 void RidenStatusClass::sendStatus()
 {
-    _ws->textAll(_serializeAllValues(_allValues));
+    RidenDongle::AllValues values;
+    if (getAllValues(values))
+        _ws->textAll(_serializeAllValues(values));
 }
 
 bool RidenStatusClass::updateStatus(bool full)
 {
-    return _modbus->get_all_values(_allValues, !full);
+    RidenDongle::AllValues values;
+    portENTER_CRITICAL(&_statusMux);
+    values = _allValues;
+    portEXIT_CRITICAL(&_statusMux);
+
+    if (!_modbus->get_all_values(values, !full))
+        return false;
+
+    portENTER_CRITICAL(&_statusMux);
+    _allValues = values;
+    if (full)
+        _hasValues = true;
+    portEXIT_CRITICAL(&_statusMux);
+    return true;
+}
+
+bool RidenStatusClass::getAllValues(RidenDongle::AllValues& values)
+{
+    portENTER_CRITICAL(&_statusMux);
+    values = _allValues;
+    bool hasValues = _hasValues;
+    portEXIT_CRITICAL(&_statusMux);
+    return hasValues;
 }
 
 void RidenStatusClass::end()

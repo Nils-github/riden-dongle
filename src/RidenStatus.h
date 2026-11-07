@@ -22,15 +22,42 @@ class RidenStatusClass
     size_t getConnectionCount();
     void sendStatus();
     bool updateStatus(bool full=false);
+    bool getAllValues(RidenDongle::AllValues& values);
+    bool queueSetVoltage(double voltage);
+    bool queueSetCurrent(double current);
+    bool queueToggleOutput();
     void loop();
 
   private:
+    enum class CommandType {
+        SetVoltage,
+        SetCurrent,
+        ToggleOutput,
+    };
+
+    struct Command {
+        CommandType type;
+        double value;
+    };
+
+    static constexpr size_t COMMAND_QUEUE_CAPACITY = 8;
+
     AsyncWebServer *_server;
     RidenModbus *_modbus;
     AsyncWebSocket *_ws;
     TaskHandle_t _xHandle;
-    RidenDongle::AllValues _allValues;
+    RidenDongle::AllValues _allValues{};
+    portMUX_TYPE _statusMux = portMUX_INITIALIZER_UNLOCKED;
+    portMUX_TYPE _commandMux = portMUX_INITIALIZER_UNLOCKED;
+    Command _commandQueue[COMMAND_QUEUE_CAPACITY]{};
+    size_t _commandHead = 0;
+    size_t _commandTail = 0;
+    size_t _commandCount = 0;
+    bool _hasValues = false;
     bool _started = false;
+    bool enqueueCommand(CommandType type, double value = 0.0);
+    bool dequeueCommand(Command& command);
+    void processCommand(const Command& command);
     String _serializeAllValues(const RidenDongle::AllValues& values);
 };
 
