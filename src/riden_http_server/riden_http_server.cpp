@@ -19,12 +19,15 @@
 #include <cstdio>
 #include <cstdlib>
 #include <list>
+#include <pgmspace.h>
 
 using namespace RidenDongle;
 
 static const String scpi_protocol = "SCPI RAW";
 static const String modbustcp_protocol = "Modbus TCP";
 static const String vxi11_protocol = "VXI-11";
+static constexpr size_t HTTP_SMALL_RESPONSE_BUFFER_SIZE = 4096;
+static constexpr size_t HTTP_DETAILS_RESPONSE_BUFFER_SIZE = 12288;
 static const std::list<uint32_t> uart_baudrates = {
     9600,
     19200,
@@ -305,7 +308,7 @@ uint16_t RidenHttpServer::port()
 
 void RidenHttpServer::handle_root_get(AsyncWebServerRequest *request)
 {
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_SMALL_RESPONSE_BUFFER_SIZE);
     response->print(HTML_HEADER);
     response->print("<div class='box'>");
     response->print("<a style='float:right' href='.'>Refresh</a><h2>Power Supply Details</h2>");
@@ -328,7 +331,7 @@ void RidenHttpServer::handle_root_get(AsyncWebServerRequest *request)
 
 void RidenHttpServer::handle_info_get(AsyncWebServerRequest *request)
 {
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_DETAILS_RESPONSE_BUFFER_SIZE);
     response->print(HTML_HEADER);
 
     if (_modbus->is_connected()) {
@@ -348,9 +351,9 @@ void RidenHttpServer::handle_psu_get(AsyncWebServerRequest *request)
 {
     AllValues all_values;
     
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_DETAILS_RESPONSE_BUFFER_SIZE);
 
-    if (_modbus->is_connected() && _modbus->get_all_values(all_values)) {
+    if (_modbus->is_connected() && RidenStatus.getAllValues(all_values)) {
         response->print("<div class='box'>");
         response->print("<a style='float:right' href='.'>Refresh</a><h2>Power Supply Details</h2>");
         response->print("<table class='info'>");
@@ -497,7 +500,7 @@ void RidenHttpServer::handle_disconnect_client_post(AsyncWebServerRequest *reque
 void RidenHttpServer::handle_reboot_dongle_get(AsyncWebServerRequest *request)
 {
     String config_arg = request->arg("config_portal");
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_SMALL_RESPONSE_BUFFER_SIZE);
     response->print(HTML_HEADER);
     if (config_arg == "true") {
         riden_config.set_config_portal_on_boot();
@@ -516,14 +519,37 @@ void RidenHttpServer::handle_reboot_dongle_get(AsyncWebServerRequest *request)
     delay(1000);
 }
 
-
 void RidenHttpServer::handle_control_get(AsyncWebServerRequest *request)
 {
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
-    response->print(HTML_HEADER);
-    response->print(HTML_CONTROL_BODY);
-    response->print(HTML_FOOTER);
-    response->print("");
+    constexpr size_t header_length = sizeof(HTML_HEADER) - 1;
+    constexpr size_t body_length = sizeof(HTML_CONTROL_BODY) - 1;
+    constexpr size_t footer_length = sizeof(HTML_FOOTER) - 1;
+    constexpr size_t response_length = header_length + body_length + footer_length;
+
+    AsyncWebServerResponse *response = request->beginResponse(
+        "text/html", response_length,
+        [=](uint8_t *buffer, size_t max_length, size_t index) -> size_t {
+            const char *sections[] = {HTML_HEADER, HTML_CONTROL_BODY, HTML_FOOTER};
+            const size_t lengths[] = {header_length, body_length, footer_length};
+            size_t copied = 0;
+
+            for (size_t section = 0; section < 3 && copied < max_length; ++section) {
+                if (index >= lengths[section]) {
+                    index -= lengths[section];
+                    continue;
+                }
+
+                size_t count = lengths[section] - index;
+                if (count > max_length - copied) {
+                    count = max_length - copied;
+                }
+                memcpy_P(buffer + copied, sections[section] + index, count);
+                copied += count;
+                index = 0;
+            }
+
+            return copied;
+        });
     request->send(response);
 }
 
@@ -598,7 +624,7 @@ void RidenHttpServer::handle_toggle_out(AsyncWebServerRequest *request)
 
 void RidenHttpServer::send_redirect_root(AsyncWebServerRequest *request)
 {
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_SMALL_RESPONSE_BUFFER_SIZE);
     response->print("<body>");
     response->print("<script>");
     response->print("  window.location = '/';");
@@ -611,7 +637,7 @@ void RidenHttpServer::send_redirect_root(AsyncWebServerRequest *request)
 
 void RidenHttpServer::send_redirect_self(AsyncWebServerRequest *request)
 {
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_SMALL_RESPONSE_BUFFER_SIZE);
     response->print("<html>");
     response->print("<body>");
     response->print("<script>");
@@ -758,7 +784,7 @@ void RidenHttpServer::handle_not_found(AsyncWebServerRequest *request)
 
 void RidenHttpServer::handle_modbus_qps(AsyncWebServerRequest *request)
 {
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_SMALL_RESPONSE_BUFFER_SIZE);
     response->print(HTML_HEADER);
     unsigned long start = millis();
     double voltage;
@@ -801,7 +827,7 @@ void RidenHttpServer::handle_lxi_identification(AsyncWebServerRequest *request)
     TinyTemplateEngineMemoryReader reader(LXI_IDENTIFICATION_TEMPLATE);
     reader.keepLineEnds(true);
 
-    AsyncResponseStream *response = request->beginResponseStream("text/html");
+    AsyncResponseStream *response = request->beginResponseStream("text/html", HTTP_SMALL_RESPONSE_BUFFER_SIZE);
     response->setContentType("text/xml");
     TinyTemplateEngine engine(reader);
     engine.start(values);
