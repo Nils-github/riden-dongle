@@ -1,6 +1,5 @@
 import os
 import gzip
-import shutil
 import subprocess
 import SCons.Script
 from SCons.Script import COMMAND_LINE_TARGETS
@@ -19,8 +18,11 @@ def gzip_webfiles(source, target, env):
             if f.endswith(('.html', '.css', '.js')) and not f.endswith('.gz'):
                 file_path = os.path.join(root, f)
                 with open(file_path, 'rb') as f_in:
-                    with gzip.open(file_path + '.gz', 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
+                    contents = f_in.read()
+                if b"%WIFI_SSID%" in contents:
+                    continue
+                with gzip.open(file_path + '.gz', 'wb') as f_out:
+                    f_out.write(contents)
                 os.remove(file_path)
 
 

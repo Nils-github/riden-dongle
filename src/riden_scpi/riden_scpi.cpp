@@ -7,6 +7,7 @@
 #include <riden_scpi/riden_scpi.h>
 #include <Arduino.h>
 #include <ESPmDNS.h>
+#include <NetworkUtils.h>
 #include <SCPI_Parser.h>
 #include <functional>
 
@@ -876,8 +877,7 @@ void RidenScpi::reset_buffers()
 const char *RidenScpi::get_visa_resource()
 {
     static char visa_resource[40];
-    sprintf(visa_resource, "TCPIP::%s::%u::SOCKET", WiFi.localIP().toString().c_str(), port());
+    sprintf(visa_resource, "TCPIP::%s::%u::SOCKET", RidenDongle::preferredNetworkIP().toString().c_str(), port());
     return visa_resource;
 }
-
 

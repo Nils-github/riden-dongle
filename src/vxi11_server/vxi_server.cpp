@@ -3,6 +3,7 @@
 #include "rpc_packets.h"
 
 #include <ESPmDNS.h>
+#include <NetworkUtils.h>
 #include <SCPI_Parser.h>
 #include <list>
 
@@ -235,7 +236,7 @@ void VXI_Server::write()
 const char *VXI_Server::get_visa_resource()
 {
     static char visa_resource[40];
-    sprintf(visa_resource, "TCPIP::%s::INSTR", WiFi.localIP().toString().c_str());
+    sprintf(visa_resource, "TCPIP::%s::INSTR", RidenDongle::preferredNetworkIP().toString().c_str());
     return visa_resource;
 }
 

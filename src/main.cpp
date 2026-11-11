@@ -7,6 +7,7 @@
 #include <ESPmDNS.h>
 #include <LittleFS.h>
 #include <Logger.h>
+#include <NetworkUtils.h>
 #include <RidenStatus.h>
 #include <Ticker.h>
 #include <WebSerial.h>
@@ -40,6 +41,14 @@ using namespace RidenDongle;
 static Ticker led_ticker;
 static char hostname[100];
 
+#if defined(ARDUINO_WT32_ETH01)
+static bool ethernet_started = false;
+#endif
+static bool mdns_started = false;
+static bool mdns_services_added = false;
+static bool mdns_start_attempted = false;
+static uint32_t mdns_last_attempt = 0;
+
 static bool has_time = false;
 static bool did_update_time = false;
 
@@ -58,6 +67,49 @@ VXI_Server *vxi_server = new VXI_Server(scpi_handler);                          
 RPC_Bind_Server *rpc_bind_server = new RPC_Bind_Server(vxi_server);                                      ///< The RPC_Bind_Server for the vxi server
 RidenHttpServer *http_server = new RidenHttpServer(riden_modbus, riden_scpi, modbus_bridge, vxi_server); ///< The web server
 
+static bool startMDNS()
+{
+    if (mdns_started || hostname[0] == '\0' ||
+        (WiFi.status() != WL_CONNECTED && !RidenDongle::wifiAccessPointActive() &&
+         !RidenDongle::ethernetConnected())) {
+        return mdns_started;
+    }
+
+    if (mdns_start_attempted && millis() - mdns_last_attempt < 5000) {
+        return false;
+    }
+
+    mdns_start_attempted = true;
+    mdns_last_attempt = millis();
+    LOG_LN("starting MDNS");
+    mdns_started = MDNS.begin(hostname);
+    if (!mdns_started) {
+        LOG_LN("MDNS failed; will retry");
+    }
+    return mdns_started;
+}
+
+static void advertiseMDNSServices()
+{
+    if (!mdns_started || mdns_services_added) {
+        return;
+    }
+
+    LOG_LN("MDNS: Add services");
+    MDNS.addService("arduino", "tcp", 80);
+    MDNS.addServiceTxt("arduino", "tcp", "app_version", RidenDongle::version_string);
+    if (RidenDongle::build_time != nullptr) {
+        MDNS.addServiceTxt("arduino", "tcp", "build_date", RidenDongle::build_time);
+    }
+    MDNS.addServiceTxt("arduino", "tcp", "mac", RidenDongle::preferredNetworkMacAddress());
+
+    http_server->advertiseMDNS();
+    modbus_bridge->advertiseMDNS();
+    riden_scpi->advertiseMDNS();
+    vxi_server->advertiseMDNS();
+    mdns_services_added = true;
+}
+
 /**
  * Invoked by led_ticker to flash the LED.
  */
@@ -75,28 +127,56 @@ static void on_time_received(struct timeval *tv);
 #else
 #endif
 
-static bool SetupWifi(const char *hostname)
+static bool SetupNetwork(const char *hostname)
 {
+#if defined(ARDUINO_WT32_ETH01)
+    if (!ethernet_started) {
+        ethernet_started = ETH.begin();
+        if (!ethernet_started) {
+            LOG_LN("Failed to start Ethernet");
+        }
+    }
+#endif
+
     LOG_LN("set hostname");
-    // Serial.println(hostname);
-    WiFi.setHostname(hostname);
+    if (hostname != nullptr) {
+        WiFi.setHostname(hostname);
+#if defined(ARDUINO_WT32_ETH01)
+        ETH.setHostname(hostname);
+#endif
+    }
     bool wifi_connected = (WiFi.status() == WL_CONNECTED);
+#if defined(ARDUINO_WT32_ETH01)
+    if (!wifi_connected && ETH.linkUp()) {
+        unsigned long start = millis();
+        while (!ETH.hasIP() && ETH.linkUp() && millis() - start < 3000) {
+            delay(50);
+        }
+    }
+#endif
+    bool ethernet_connected = RidenDongle::ethernetConnected();
+    bool wifi_ap_active = RidenDongle::wifiAccessPointActive();
 
     if (wifi_connected) {
-        LOG_LN("Wifi connected");
-
+        LOG_LN("WiFi connected");
         LOG_F("WiFi SSID: %s\r\n", WiFi.SSID().c_str());
         LOG_F("IP: %s\r\n", WiFi.localIP().toString().c_str());
+    }
+    if (wifi_ap_active) {
+        LOG_LN("WiFi access point active");
+        LOG_F("WiFi access point IP: %s\r\n", WiFi.softAPIP().toString().c_str());
+    }
+#if defined(ARDUINO_WT32_ETH01)
+    if (ethernet_connected) {
+        LOG_LN("Ethernet connected");
+        LOG_F("Ethernet IP: %s\r\n", ETH.localIP().toString().c_str());
+    }
+#endif
 
+    if (wifi_connected || wifi_ap_active || ethernet_connected) {
         // experimental::ESP8266WiFiGratuitous::stationKeepAliveSetIntervalMs();
-        if (hostname != nullptr) {
-            LOG_LN("starting MDNS");
-            if (!MDNS.begin(hostname)) {
-                LOG_LN("MDNS failed");
-                while (true) {
-                    delay(100);
-                }
-            }
+        if (hostname != nullptr && (wifi_connected || wifi_ap_active || ethernet_connected)) {
+            startMDNS();
             String tz = riden_config.get_timezone_spec();
             if (tz.length() > 0) {
                 // Get time via NTP
@@ -107,12 +187,12 @@ static bool SetupWifi(const char *hostname)
             }
         }
 
-        LOG_LN("WiFi initialized");
+        LOG_LN("Network initialized");
     } else {
-        LOG_LN("WiFi failed to initialize");
+        LOG_LN("No network interface connected");
     }
 
-    return wifi_connected;
+    return wifi_connected || wifi_ap_active || ethernet_connected;
 }
 
 bool StartServices()
@@ -134,7 +214,7 @@ bool StartServices()
         LOG_LN(hostname);
 
         LOG("Setup Wifi...");
-        SetupWifi(hostname);
+        bool network_available = SetupNetwork(hostname);
         LOG_LN("Start SCPI");
         riden_scpi->begin();
         LOG_LN("Start Modbus bridge");
@@ -150,22 +230,15 @@ bool StartServices()
         led_ticker.detach();
         digitalWrite(LED_BUILTIN, HIGH);
 
-        LOG_LN("MDNS: Add services");
-        MDNS.addService("arduino", "tcp", 80);
-        MDNS.addServiceTxt("arduino", "tcp", "app_version", RidenDongle::version_string);
-        if (RidenDongle::build_time != nullptr) {
-            MDNS.addServiceTxt("arduino", "tcp", "build_date", RidenDongle::build_time);
+        startMDNS();
+        advertiseMDNSServices();
+        if (network_available && !mdns_started) {
+            LOG_LN("Skipping MDNS services: mDNS unavailable");
         }
-        MDNS.addServiceTxt("arduino", "tcp", "mac", WiFi.macAddress());
-
-        http_server->advertiseMDNS();
-        modbus_bridge->advertiseMDNS();
-        riden_scpi->advertiseMDNS();
-        vxi_server->advertiseMDNS();
 
         connected = true;
     } else {
-        SetupWifi(nullptr);
+        SetupNetwork(nullptr);
 
         led_ticker.attach(0.1, tick);
         connected = false;
@@ -407,6 +480,12 @@ void setup()
     bool littleFSstatus = LittleFS.begin(true);
     // web server (ota + serial)
     http_server->begin();
+#if defined(ARDUINO_WT32_ETH01)
+    ethernet_started = ETH.begin();
+    if (!ethernet_started) {
+        LOG_LN("Failed to start Ethernet");
+    }
+#endif
     delay(500);
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 1); // reenable brownout
 
@@ -470,6 +549,8 @@ void setup()
 void loop()
 {
     if (connected) {
+        startMDNS();
+        advertiseMDNSServices();
         if (has_time && !did_update_time) {
             LOG_LN("Setting PSU clock");
             // Read time and convert to local timezone

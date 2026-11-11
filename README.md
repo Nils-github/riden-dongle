@@ -49,10 +49,15 @@ The firmware has been tested with various tools and libraries:
   - via raw socket (VISA string: `TCPIP::<ip address>::5025::SOCKET`)
   - and via vxi-11 (VISA string: `TCPIP::<ip address>::INSTR`).
 - Web interface to configure the dongle, update the firmware, and remote control, with graph functions.
+- WiFi and WT32-ETH01 wired Ethernet can be used together; Ethernet obtains its address through DHCP.
 - Automatically set power supply clock based on NTP.
 - mDNS advertising.
 - Handles approximately 65 queries/second using Modbus TCP or raw socket SCPI
   (tested using Unisoft v1.41.1k, UART baudrate set at 921600).
+
+On the WT32-ETH01, connect Ethernet to a network with DHCP enabled. The web interface's
+network information page shows the assigned addresses for connected interfaces; generated
+VISA resource strings use the Ethernet address when available and otherwise use WiFi.
 
 
 ## Warning

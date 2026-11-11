@@ -6,6 +6,7 @@
 #include <WebSerial.h>
 #include <RidenStatus.h>
 #include <Logger.h>
+#include <NetworkUtils.h>
 #include <WifiManager.h>
 #include <riden_config/riden_config.h>
 #include <riden_http_server/http_static.h>
@@ -275,22 +276,20 @@ String RidenHttpServer::_htmlProcessor(const String &var)
 
 void RidenHttpServer::_handlePage(AsyncWebServerRequest *request, const char *pagePath)
 {
-  if (!LittleFS.exists(pagePath))
-  {
-    request->send(404, "text/plain", "Web page not found in LittleFS.");
-    return;
-  }
-
   request->send(LittleFS, pagePath, String(), false, [this](const String &str)
                 { return this->_htmlProcessor(str); });
 }
 
 void RidenHttpServer::showIp()
 {
-  if (WiFi.getMode() == WIFI_MODE_STA)
+  if (WiFi.status() == WL_CONNECTED)
     Logger.Log(WiFi.localIP().toString().c_str());
-  else if (WiFi.getMode() == WIFI_MODE_AP)
+  if (RidenDongle::wifiAccessPointActive())
     Logger.Log(WiFi.softAPIP().toString().c_str());
+#if defined(ARDUINO_WT32_ETH01)
+  if (RidenDongle::ethernetConnected())
+    Logger.Log(ETH.localIP().toString().c_str());
+#endif
 }
 
 void RidenHttpServer::loop(void)
@@ -690,17 +689,35 @@ void RidenHttpServer::send_network_info(AsyncResponseStream *response)
     response->print("                <tbody>");
     send_info_row(response, "Hostname", WiFi.getHostname());
     send_info_row(response, "MDNS", String(WiFi.getHostname()) + ".local");
-    send_info_row(response, "WiFi network", WiFi.SSID());
-    send_info_row(response, "IP", WiFi.localIP().toString());
-    send_info_row(response, "Subnet", WiFi.subnetMask().toString());
-    send_info_row(response, "Default Gateway", WiFi.gatewayIP().toString());
-    for (int i = 0;; i++) {
-        auto dns = WiFi.dnsIP(i);
-        if (dns == INADDR_NONE) {
-            break;
+    if (WiFi.status() == WL_CONNECTED) {
+        send_info_row(response, "WiFi network", WiFi.SSID());
+        send_info_row(response, "WiFi IP", WiFi.localIP().toString());
+        send_info_row(response, "WiFi subnet", WiFi.subnetMask().toString());
+        send_info_row(response, "WiFi default gateway", WiFi.gatewayIP().toString());
+        for (int i = 0;; i++) {
+            auto dns = WiFi.dnsIP(i);
+            if (dns == INADDR_NONE) {
+                break;
+            }
+            send_info_row(response, "WiFi DNS", dns.toString());
         }
-        send_info_row(response, "DNS", dns.toString());
+    } else if (RidenDongle::wifiAccessPointActive()) {
+        send_info_row(response, "WiFi access point IP", WiFi.softAPIP().toString());
     }
+#if defined(ARDUINO_WT32_ETH01)
+    if (RidenDongle::ethernetConnected()) {
+        send_info_row(response, "Ethernet IP", ETH.localIP().toString());
+        send_info_row(response, "Ethernet subnet", ETH.subnetMask().toString());
+        send_info_row(response, "Ethernet default gateway", ETH.gatewayIP().toString());
+        for (int i = 0;; i++) {
+            auto dns = ETH.dnsIP(i);
+            if (dns == INADDR_NONE) {
+                break;
+            }
+            send_info_row(response, "Ethernet DNS", dns.toString());
+        }
+    }
+#endif
     response->print("                </tbody>");
     response->print("            </table>");
     response->print("        </div>");    
