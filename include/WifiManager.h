@@ -13,12 +13,14 @@ class WifiManagerClass
     bool saveCredentials();
     void setCredentials(const String &ssid, const String &password);
     void connect();
-    void keepAlive();
+    void loop();
+    bool isEnabled() const;
     bool readCredentials();
     bool clearCredentials();
     void startAPMode();
     String ssid = "";
   private:
+    void startStationConnection();
     String _password = "";
 };
 

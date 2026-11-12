@@ -12,6 +12,7 @@
 #include <Ticker.h>
 #include <WebSerial.h>
 #include <WiFi.h>
+#include <WifiManager.h>
 #include <esp_sntp.h>
 #include <riden_config/riden_config.h>
 #include <riden_http_server/riden_http_server.h>
@@ -70,7 +71,8 @@ RidenHttpServer *http_server = new RidenHttpServer(riden_modbus, riden_scpi, mod
 static bool startMDNS()
 {
     if (mdns_started || hostname[0] == '\0' ||
-        (WiFi.status() != WL_CONNECTED && !RidenDongle::wifiAccessPointActive() &&
+        ((!WifiManager.isEnabled() || WiFi.status() != WL_CONNECTED) &&
+         (!WifiManager.isEnabled() || !RidenDongle::wifiAccessPointActive()) &&
          !RidenDongle::ethernetConnected())) {
         return mdns_started;
     }
@@ -140,12 +142,14 @@ static bool SetupNetwork(const char *hostname)
 
     LOG_LN("set hostname");
     if (hostname != nullptr) {
-        WiFi.setHostname(hostname);
+        if (WifiManager.isEnabled()) {
+            WiFi.setHostname(hostname);
+        }
 #if defined(ARDUINO_WT32_ETH01)
         ETH.setHostname(hostname);
 #endif
     }
-    bool wifi_connected = (WiFi.status() == WL_CONNECTED);
+    bool wifi_connected = WifiManager.isEnabled() && WiFi.status() == WL_CONNECTED;
 #if defined(ARDUINO_WT32_ETH01)
     if (!wifi_connected && ETH.linkUp()) {
         unsigned long start = millis();
@@ -155,7 +159,7 @@ static bool SetupNetwork(const char *hostname)
     }
 #endif
     bool ethernet_connected = RidenDongle::ethernetConnected();
-    bool wifi_ap_active = RidenDongle::wifiAccessPointActive();
+    bool wifi_ap_active = WifiManager.isEnabled() && RidenDongle::wifiAccessPointActive();
 
     if (wifi_connected) {
         LOG_LN("WiFi connected");
@@ -571,6 +575,7 @@ void loop()
         vxi_server->loop();
     }
     http_server->loop();
+    WifiManager.loop();
     delay(5);
     if (enPinStateChanged) {
         delay(100);

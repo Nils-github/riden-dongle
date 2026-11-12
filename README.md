@@ -59,6 +59,8 @@ On the WT32-ETH01, connect Ethernet to a network with DHCP enabled. The web inte
 network information page shows the assigned addresses for connected interfaces; generated
 VISA resource strings use the Ethernet address when available and otherwise use WiFi.
 
+WiFi can be enabled or disabled with a switch/signal on GPIO14: HIGH or OPEN enables WiFi and LOW
+disables it. The input uses the internal pull-down.
 
 ## Warning
 

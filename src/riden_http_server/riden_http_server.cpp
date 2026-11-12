@@ -282,9 +282,9 @@ void RidenHttpServer::_handlePage(AsyncWebServerRequest *request, const char *pa
 
 void RidenHttpServer::showIp()
 {
-  if (WiFi.status() == WL_CONNECTED)
+  if (WifiManager.isEnabled() && WiFi.status() == WL_CONNECTED)
     Logger.Log(WiFi.localIP().toString().c_str());
-  if (RidenDongle::wifiAccessPointActive())
+  if (WifiManager.isEnabled() && RidenDongle::wifiAccessPointActive())
     Logger.Log(WiFi.softAPIP().toString().c_str());
 #if defined(ARDUINO_WT32_ETH01)
   if (RidenDongle::ethernetConnected())
@@ -505,7 +505,7 @@ void RidenHttpServer::handle_reboot_dongle_get(AsyncWebServerRequest *request)
         riden_config.set_config_portal_on_boot();
         riden_config.commit();
         response->print(HTML_REBOOTING_DONGLE_CONFIG_PORTAL_BODY_1);
-        response->print(WiFi.getHostname());
+        response->print(WifiManager.isEnabled() ? WiFi.getHostname() : "");
         response->print(HTML_REBOOTING_DONGLE_CONFIG_PORTAL_BODY_2);
     } else {
         response->print(HTML_REBOOTING_DONGLE_BODY);
@@ -687,9 +687,10 @@ void RidenHttpServer::send_network_info(AsyncResponseStream *response)
     response->print("            <h2>Network Configuration</h2>");
     response->print("            <table class='info'>");
     response->print("                <tbody>");
-    send_info_row(response, "Hostname", WiFi.getHostname());
-    send_info_row(response, "MDNS", String(WiFi.getHostname()) + ".local");
-    if (WiFi.status() == WL_CONNECTED) {
+    const char *hostname = WifiManager.isEnabled() ? WiFi.getHostname() : "";
+    send_info_row(response, "Hostname", hostname);
+    send_info_row(response, "MDNS", String(hostname) + ".local");
+    if (WifiManager.isEnabled() && WiFi.status() == WL_CONNECTED) {
         send_info_row(response, "WiFi network", WiFi.SSID());
         send_info_row(response, "WiFi IP", WiFi.localIP().toString());
         send_info_row(response, "WiFi subnet", WiFi.subnetMask().toString());
@@ -701,7 +702,7 @@ void RidenHttpServer::send_network_info(AsyncResponseStream *response)
             }
             send_info_row(response, "WiFi DNS", dns.toString());
         }
-    } else if (RidenDongle::wifiAccessPointActive()) {
+    } else if (WifiManager.isEnabled() && RidenDongle::wifiAccessPointActive()) {
         send_info_row(response, "WiFi access point IP", WiFi.softAPIP().toString());
     }
 #if defined(ARDUINO_WT32_ETH01)
@@ -823,16 +824,24 @@ void RidenHttpServer::handle_modbus_qps(AsyncWebServerRequest *request)
 void RidenHttpServer::handle_lxi_identification(AsyncWebServerRequest *request)
 {
     String model = _modbus->get_type();
-    String ip = WiFi.localIP().toString();
-    String subnet_mask = WiFi.subnetMask().toString();
-    String mac_address = WiFi.macAddress();
-    String gateway = WiFi.gatewayIP().toString();
+    String ip;
+    String subnet_mask;
+    String mac_address;
+    String gateway;
+    const char *hostname = "";
+    if (WifiManager.isEnabled()) {
+        ip = WiFi.localIP().toString();
+        subnet_mask = WiFi.subnetMask().toString();
+        mac_address = WiFi.macAddress();
+        gateway = WiFi.gatewayIP().toString();
+        hostname = WiFi.getHostname();
+    }
     // The values to be substituted
     const char *values[] = {
         model.c_str(),
         get_serial_number(),
         get_firmware_version(),
-        WiFi.getHostname(),
+        hostname,
         ip.c_str(),
         subnet_mask.c_str(),
         mac_address.c_str(),
