@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Riden Controller - PSU Status</title>
   <link rel="stylesheet" href="/static/style.css">
-  <!--link rel="stylesheet" href="http://192.168.100.186/static/style.css"-->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
@@ -20,6 +19,34 @@
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 5px;
+    }
+
+    #controlModeContainer input[type="radio"]:checked,
+    #modeContainer input[type="radio"]:checked {
+      accent-color: #ff4500;
+    }
+
+    #controlModeContainer input[type="radio"],
+    #modeContainer input[type="radio"] {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      margin: 3px 3px 0 5px;
+      border: 1px solid #fff;
+      border-radius: 50%;
+      background: transparent;
+      opacity: 1;
+      display: inline-grid;
+      place-content: center;
+    }
+
+    #controlModeContainer input[type="radio"]:checked::before,
+    #modeContainer input[type="radio"]:checked::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #ff4500;
     }
 
     #presetTable {
@@ -205,9 +232,66 @@
       <div class="resize-handle"></div>
     </div>
 
+
+    <div id="controlModeContainer" class="control-panel draggable resizable">
+      <h3 class="drag-handle">Controlmode</h3>
+      <button id="controlModeBtn" type="button" disabled>Toggle Control Mode</button><br>
+      <label><input type="radio" name="controlmode" value="LC" disabled /> Local Control (LC)</label><br>
+      <label><input type="radio" name="controlmode" value="NC" checked disabled /> Network Control (NC)</label>
+      <div class="resize-handle"></div>
+    </div>
+
+
   </div>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      const controlModeButton = document.getElementById('controlModeBtn');
+      let currentControlMode = null;
+
+      fetch('/controlmode')
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .then(mode => {
+          const selectedInput = document.querySelector(`input[name="controlmode"][value="${mode}"]`);
+          if (!selectedInput) throw new Error(`Unexpected control mode: ${mode}`);
+          selectedInput.checked = true;
+          currentControlMode = mode;
+          controlModeButton.disabled = false;
+        })
+        .catch(error => {
+          console.error('Unable to read control mode:', error);
+        });
+
+      controlModeButton.addEventListener('click', function () {
+        if (currentControlMode === null) return;
+
+        const selectedMode = currentControlMode === 'LC' ? 'NC' : 'LC';
+        controlModeButton.disabled = true;
+
+        fetch('/controlmode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ mode: selectedMode })
+        })
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.text();
+          })
+          .then(mode => {
+            if (mode !== selectedMode) throw new Error(`Unexpected control mode response: ${mode}`);
+            document.querySelector(`input[name="controlmode"][value="${mode}"]`).checked = true;
+            currentControlMode = mode;
+          })
+          .catch(error => {
+            console.error('Unable to change control mode:', error);
+          })
+          .finally(() => {
+            controlModeButton.disabled = false;
+          });
+      });
+
       let chart = null;
       try {
         const ctx = document.getElementById('sensorChart').getContext('2d');

@@ -190,6 +190,10 @@ bool RidenHttpServer::begin()
                 { this->handle_set_v(request); });
     _server->on("/toggle_out", [this](AsyncWebServerRequest *request)
                 { this->handle_toggle_out(request); });
+    _server->on("/controlmode", HTTP_GET, [this](AsyncWebServerRequest *request)
+                { this->handle_control_mode_get(request); });
+    _server->on("/controlmode", HTTP_POST, [this](AsyncWebServerRequest *request)
+                { this->handle_control_mode_post(request); });
 
     _server->on("/disconnect_client/", HTTP_POST, [this](AsyncWebServerRequest *request)
                 { this->handle_disconnect_client_post(request); });
@@ -619,6 +623,28 @@ void RidenHttpServer::handle_toggle_out(AsyncWebServerRequest *request)
     } else {
         request->send(503, "text/plain", "Power supply unavailable or command queue full");
     }
+}
+
+void RidenHttpServer::handle_control_mode_get(AsyncWebServerRequest *request)
+{
+    request->send(200, "text/plain", _modbus->networkControlRequested() ? "NC" : "LC");
+}
+
+void RidenHttpServer::handle_control_mode_post(AsyncWebServerRequest *request)
+{
+    if (!request->hasArg("mode")) {
+        request->send(400, "text/plain", "Missing control mode.");
+        return;
+    }
+
+    const String mode = request->arg("mode");
+    if (mode != "LC" && mode != "NC") {
+        request->send(400, "text/plain", "Invalid control mode.");
+        return;
+    }
+
+    _modbus->requestNetworkControl(mode == "NC");
+    request->send(202, "text/plain", mode);
 }
 
 void RidenHttpServer::send_redirect_root(AsyncWebServerRequest *request)

@@ -44,6 +44,8 @@ class RidenHttpServer
     void handle_set_i(AsyncWebServerRequest *request);
     void handle_set_v(AsyncWebServerRequest *request);
     void handle_toggle_out(AsyncWebServerRequest *request);
+    void handle_control_mode_get(AsyncWebServerRequest *request);
+    void handle_control_mode_post(AsyncWebServerRequest *request);
     
     void handle_modbus_qps(AsyncWebServerRequest *request);
     void send_redirect_root(AsyncWebServerRequest *request);
@@ -78,4 +80,3 @@ class RidenHttpServer
 };
 
 } // namespace RidenDongle
-

@@ -90,6 +90,8 @@ class RidenModbus
 
     bool begin();
     bool loop();
+    void requestNetworkControl(bool enabled);
+    bool networkControlRequested() const;
 
     bool is_connected();
 
@@ -284,6 +286,9 @@ class RidenModbus
     ModbusRTU modbus;
     unsigned long timeout = 500; // milliseconds
     bool initialized = false;
+    volatile bool networkControlRequested_ = true;
+    bool networkControlActive_ = true;
+    uint32_t lastBeginAttempt_ = 0;
     String type;
 
     double v_multi = 100.0;

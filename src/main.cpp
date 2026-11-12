@@ -552,6 +552,11 @@ void setup()
 
 void loop()
 {
+    riden_modbus->loop();
+    if (!connected && riden_modbus->is_connected()) {
+        StartServices();
+    }
+
     if (connected) {
         startMDNS();
         advertiseMDNSServices();
@@ -568,7 +573,6 @@ void loop()
         }
 
         // //MDNS.update();
-        riden_modbus->loop();
         riden_scpi->loop();
         modbus_bridge->loop();
         rpc_bind_server->loop();

@@ -31,6 +31,10 @@ bool RidenModbus::begin()
     this->type = "RDMOCKED";
     return true;
 #else
+    if (!networkControlActive_) {
+        return false;
+    }
+
     if (initialized) {
         return true;
     }
@@ -105,7 +109,29 @@ bool RidenModbus::loop()
 #ifdef MOCK_RIDEN
     return true;
 #else
-    if (!initialized) {
+    const bool requested = networkControlRequested_;
+    if (requested != networkControlActive_) {
+        networkControlActive_ = requested;
+        if (!networkControlActive_) {
+            initialized = false;
+            SerialRuideng.end();
+            LOG_LN("Serial Modbus disabled for local control");
+            return false;
+        }
+
+        initialized = false;
+        lastBeginAttempt_ = millis();
+        if (!begin()) {
+            return false;
+        }
+        LOG_LN("Serial Modbus enabled for network control");
+    } else if (networkControlActive_ && !initialized &&
+               millis() - lastBeginAttempt_ >= 2000) {
+        lastBeginAttempt_ = millis();
+        begin();
+    }
+
+    if (!networkControlActive_ || !initialized) {
         return false;
     }
 
@@ -114,9 +140,19 @@ bool RidenModbus::loop()
 #endif
 }
 
+void RidenModbus::requestNetworkControl(bool enabled)
+{
+    networkControlRequested_ = enabled;
+}
+
+bool RidenModbus::networkControlRequested() const
+{
+    return networkControlRequested_;
+}
+
 bool RidenModbus::is_connected()
 {
-    return initialized;
+    return networkControlActive_ && initialized;
 }
 
 String RidenModbus::get_type()

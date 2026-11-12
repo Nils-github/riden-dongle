@@ -49,6 +49,8 @@ The firmware has been tested with various tools and libraries:
   - via raw socket (VISA string: `TCPIP::<ip address>::5025::SOCKET`)
   - and via vxi-11 (VISA string: `TCPIP::<ip address>::INSTR`).
 - Web interface to configure the dongle, update the firmware, and remote control, with graph functions.
+- The status page can switch between Local Control (UART2 serial Modbus disabled) and
+  Network Control (UART2 serial Modbus enabled).
 - WiFi and WT32-ETH01 wired Ethernet can be used together; Ethernet obtains its address through DHCP.
 - Automatically set power supply clock based on NTP.
 - mDNS advertising.
