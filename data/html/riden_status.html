@@ -363,6 +363,15 @@
           scales: {
             x: {
               type: 'realtime',
+              time: {
+                displayFormats: {
+                  millisecond: 'HH:mm:ss.SSS',
+                  second: 'HH:mm:ss',
+                  minute: 'HH:mm',
+                  hour: 'HH:mm'
+                },
+                tooltipFormat: 'HH:mm:ss'
+              },
               realtime: {
                 delay: 0,
                 refresh: 1000,
