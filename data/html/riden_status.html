@@ -564,6 +564,17 @@
       <div class="resize-handle"></div>
     </div>
 
+    <div id="batteryChargeContainer" class="control-panel draggable resizable">
+      <h3 class="drag-handle">Battery Charge</h3>
+      <div class="control-energy-values">
+        <p>Ah: <span id="amp_hours">-</span></p>
+        <p>Wh: <span id="watt_hours">-</span></p>
+      </div>
+      <div class="setpoint-divider"></div>
+      <p>Battery Voltage: <span id="battery_voltage">-</span> V</p>
+      <div class="resize-handle"></div>
+    </div>
+
     <div class="control-panel draggable resizable" id="presetsSection">
       <h3 class="drag-handle">Presets</h3>
       <table id="presetTable">
@@ -626,10 +637,6 @@
         <p>Output Current: <span id="current_out">-</span> A</p>
         <p class="power-value-centered">Max Current: <span id="current_max">-</span> A</p>
         <p class="power-value-right">Output Power: <span id="power_out">-</span> W</p>
-      </div>
-      <div class="control-energy-values">
-        <p>Ah: <span id="amp_hours">-</span></p>
-        <p>Wh: <span id="watt_hours">-</span></p>
       </div>
       <div class="setpoint-divider"></div>
       <div class="control-temperature-values">
@@ -1053,8 +1060,10 @@
         document.getElementById('current_max').textContent = data.current_max;
         const ampHours = data.ah === null ? NaN : Number(data.ah);
         const wattHours = data.wh === null ? NaN : Number(data.wh);
+        const batteryVoltage = data.voltage_battery === null ? NaN : Number(data.voltage_battery);
         document.getElementById('amp_hours').textContent = Number.isFinite(ampHours) ? ampHours.toFixed(3) : '-';
         document.getElementById('watt_hours').textContent = Number.isFinite(wattHours) ? wattHours.toFixed(3) : '-';
+        document.getElementById('battery_voltage').textContent = Number.isFinite(batteryVoltage) ? batteryVoltage.toFixed(2) : '-';
 
         const tableBody = document.getElementById("presetBody");
         tableBody.innerHTML = "";
@@ -1085,6 +1094,9 @@
       const defaultLayout = {
         "sensorChartContainer": {
           "x": -530, "y": 7.133331298828125, "width": 450, "height": 460
+        },
+        "batteryChargeContainer": {
+          "x": -530, "y": 477.1333312988281, "width": 450, "height": 170
         },
         "presetsSection": {
           "x": 150, "y": 127.13333129882812, "width": 340, "height": 420
@@ -1119,6 +1131,7 @@
           else
             layout = defaultLayout;
         }
+        layout = Object.assign({}, defaultLayout, layout);
         const presetLayout = layout.presetsSection;
         const controlLayout = layout.controlModeContainer;
         if (presetLayout && presetLayout.height < 420) {
