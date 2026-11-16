@@ -25,14 +25,24 @@ class RidenStatusClass
     bool getAllValues(RidenDongle::AllValues& values);
     bool queueSetVoltage(double voltage);
     bool queueSetCurrent(double current);
+    bool queueSetM0Ovp(double voltage);
+    bool queueSetM0Ocp(double current);
     bool queueToggleOutput();
+    bool queueLoadPreset(uint8_t presetIndex);
+    bool queueStorePreset(uint8_t presetIndex);
+    bool queueRefreshPresets();
     void loop();
 
   private:
     enum class CommandType {
         SetVoltage,
         SetCurrent,
+        SetM0Ovp,
+        SetM0Ocp,
         ToggleOutput,
+        LoadPreset,
+        StorePreset,
+        RefreshPresets,
     };
 
     struct Command {

@@ -43,7 +43,11 @@ class RidenHttpServer
     void handle_status_get(AsyncWebServerRequest *request);
     void handle_set_i(AsyncWebServerRequest *request);
     void handle_set_v(AsyncWebServerRequest *request);
+    void handle_set_m0_ovp(AsyncWebServerRequest *request);
+    void handle_set_m0_ocp(AsyncWebServerRequest *request);
     void handle_toggle_out(AsyncWebServerRequest *request);
+    void handle_preset_load_post(AsyncWebServerRequest *request);
+    void handle_preset_store_post(AsyncWebServerRequest *request);
     void handle_control_mode_get(AsyncWebServerRequest *request);
     void handle_control_mode_post(AsyncWebServerRequest *request);
     

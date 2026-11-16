@@ -76,6 +76,7 @@ struct AllValues {
     bool is_logo;
     uint16_t language;
     uint8_t brightness;
+    Preset preset_m0;
     // NOTE: Presets are zero-based, i.e. `presets[0]` refers to `M1`.
     Preset presets[NUMBER_OF_PRESETS];
 };
@@ -129,7 +130,7 @@ class RidenModbus
     /**
      * @brief Set the preset
      *
-     * @param index One-based index, i.e. `1` refers to `M1`.
+    * @param index Zero-based index, i.e. `0` refers to `M1`.
      * @return true On success.
      * @return false On failure.
      */
@@ -177,7 +178,7 @@ class RidenModbus
     /**
      * @brief Store preset at `index`.
      *
-     * @param index One-based index, i.e. `1` refers to `M1`.
+    * @param index Zero-based index, i.e. `0` refers to `M1`.
      * @return true On success.
      * @return false On failure.
      */

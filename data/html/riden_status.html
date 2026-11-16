@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Riden Controller - PSU Status</title>
   <link rel="stylesheet" href="/static/style.css">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0"></script>
@@ -21,13 +20,11 @@
       border-radius: 5px;
     }
 
-    #controlModeContainer input[type="radio"]:checked,
-    #modeContainer input[type="radio"]:checked {
+    #controlModeContainer input[type="radio"]:checked {
       accent-color: #ff4500;
     }
 
-    #controlModeContainer input[type="radio"],
-    #modeContainer input[type="radio"] {
+    #controlModeContainer input[type="radio"] {
       appearance: none;
       width: 14px;
       height: 14px;
@@ -40,8 +37,7 @@
       place-content: center;
     }
 
-    #controlModeContainer input[type="radio"]:checked::before,
-    #modeContainer input[type="radio"]:checked::before {
+    #controlModeContainer input[type="radio"]:checked::before {
       content: "";
       width: 10px;
       height: 10px;
@@ -49,9 +45,349 @@
       background-color: #ff4500;
     }
 
+    .setpoint-control {
+      position: relative;
+      touch-action: none;
+    }
+
+    #controlModeContainer {
+      width: 540px;
+      min-width: 540px;
+      min-height: 770px;
+    }
+
+    .power-value-centered {
+      text-align: center;
+    }
+
+    .power-value-right {
+      text-align: right;
+    }
+
+    .control-mode-options {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .control-mode-options label {
+      margin-top: 4px;
+      width: 220px;
+      text-align: left;
+    }
+
+    .setpoint-knobs {
+      display: grid;
+      grid-template-columns: 200px 100px 200px;
+      justify-content: space-between;
+      align-items: start;
+      margin-top: 8px;
+    }
+
+    .setpoint-output-control {
+      width: 100px;
+      text-align: center;
+    }
+
+    .control-output-values {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      column-gap: 8px;
+      text-align: left;
+    }
+
+    .control-output-values p {
+      margin: 4px 0;
+    }
+
+    .control-energy-values {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 8px;
+    }
+
+    .control-energy-values p {
+      margin: 4px 0;
+    }
+
+    .control-temperature-values {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 8px;
+    }
+
+    .control-temperature-values p {
+      margin: 4px 0;
+    }
+
+    .control-protection-values {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .control-protection-values label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 0;
+      color: #fff;
+      text-shadow: none;
+    }
+
+    .control-protection-input[type="number"] {
+      box-sizing: border-box;
+      width: 104px;
+      height: 28px;
+      margin: 0;
+      padding: 2px;
+      border: 1px solid #777;
+      border-radius: 4px;
+      background: #333;
+      color: #fff;
+      font-size: 15px;
+      text-align: center;
+      appearance: textfield;
+    }
+
+    .control-protection-input[type="number"]:hover {
+      appearance: auto;
+    }
+
+    .control-protection-input:disabled {
+      opacity: 0.65;
+    }
+
+    .setpoint-knob-title.output {
+      color: #fff;
+    }
+
+    #outputToggleButton {
+      box-sizing: border-box;
+      width: 88px;
+      min-height: 32px;
+      margin: 0;
+      padding: 5px 8px;
+      border: 1px solid #888;
+      border-radius: 5px;
+      background: #666;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #outputToggleButton:hover:not(:disabled) {
+      background: #c8c8c8;
+      color: #111;
+    }
+
+    #outputToggleButton.is-on {
+      border-color: #00ff00;
+      background: #00ff00;
+      color: #111;
+    }
+
+    #outputToggleButton.is-on:hover:not(:disabled) {
+      background: rgb(135, 255, 135);
+    }
+
+    #outputToggleButton:disabled {
+      cursor: default;
+    }
+
+    .setpoint-divider {
+      border-top: 1px dashed #ff4500;
+      margin: 10px 0;
+    }
+
+    .setpoint-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 64px);
+      justify-content: center;
+      gap:42px;
+      margin-top: 10px;
+    }
+
+    .setpoint-action {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 32px;
+      margin: 0;
+      padding: 5px 8px;
+      border: 1px solid #777;
+      border-radius: 5px;
+      background: #333;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .setpoint-mode-indicator {
+      opacity: 1;
+      cursor: default;
+    }
+
+    .setpoint-mode-indicator:hover {
+      border-color: #777;
+      background: #333;
+      color: #fff;
+    }
+
+    #voltageModeButton[aria-pressed="true"] {
+      border-color: #77ff00;
+      background: #77ff00;
+    }
+
+    #currentModeButton[aria-pressed="true"] {
+      border-color: #60bcd4;
+      background: #60bcd4;
+      color: #111;
+    }
+
+    #voltageSetButton:hover,
+    #currentSetButton:hover {
+      border-color: #777;
+      background: #333;
+      color: #fff;
+    }
+
+    body.status-connected #voltageSetButton.setpoint-action--pending:hover,
+    body.status-connected #voltageSetButton:hover {
+      border-color: #77ff00;
+      background: #77ff00;
+      color: #fff;
+    }
+
+    body.status-connected #currentSetButton:hover,
+    body.status-connected #currentSetButton.setpoint-action--pending:hover {
+      border-color: #60bcd4;
+      background: #60bcd4;
+      color: #111;
+    }
+
+    #voltageSetButton.setpoint-action--pending,
+    #currentSetButton.setpoint-action--pending,
+    #voltageSetButton.setpoint-action--pending:hover,
+    #currentSetButton.setpoint-action--pending:hover {
+      border-color: #f9ff4f;
+      background: #f9ff4f;
+      color: #111;
+    }
+
+    .setpoint-knob-column {
+      width: 200px;
+      text-align: center;
+    }
+
+    .setpoint-knob-title {
+      margin: 2px 0 10px;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 22px;
+      text-shadow: none;
+    }
+
+    .setpoint-knob-title.voltage {
+      color: #77FF00;
+    }
+
+    .setpoint-knob-title.current {
+      color: #60bcd4;
+    }
+
+    .setpoint-knob {
+      display: block;
+      width: 200px;
+      height: 200px;
+      overflow: visible;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .setpoint-knob:focus-visible {
+      outline: 2px solid #77FF00;
+      outline-offset: 2px;
+      border-radius: 50%;
+    }
+
+    .setpoint-knob-track {
+      fill: none;
+      stroke: #dfe3e9;
+      stroke-width: 8;
+    }
+
+    .setpoint-knob-progress {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+    }
+
+    .setpoint-knob-mark {
+      stroke: #dfe3e9;
+      stroke-width: 1.5;
+    }
+
+    .setpoint-knob-mark.major {
+      stroke-width: 2;
+    }
+
+    .setpoint-knob-label {
+      fill: #dfe3e9;
+      font-size: 11px;
+      text-shadow: none;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .setpoint-knob-pointer {
+      stroke-width: 3;
+      stroke-linecap: round;
+    }
+
+    .setpoint-input-row {
+      position: absolute;
+      top: 175px;
+      left: 64px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .setpoint-input[type="number"] {
+      box-sizing: border-box;
+      width: 72px;
+      height: 20px;
+      margin: 0;
+      padding: 2px;
+      border: none;
+      background: transparent;
+      color: #dfe3e9;
+      font-size: 20px;
+      text-align: center;
+      appearance: textfield;
+    }
+
+    .setpoint-input:hover {
+      appearance: auto;
+    }
+
+    .setpoint-unit {
+      color: grey;
+      font-size: 14px;
+    }
+
     #presetTable {
       width: 100%;
       border-collapse: collapse;
+    }
+
+    #presetsSection {
+      min-height: 420px;
     }
 
     #presetTable th,
@@ -60,6 +396,52 @@
       text-align: center;
       color: #fff;
       border-bottom: 1px solid #ddd;
+    }
+
+    .preset-actions {
+      display: grid;
+      grid-template-columns: 72px repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .preset-selector[type="number"] {
+      box-sizing: border-box;
+      width: 100%;
+      height: 32px;
+      margin: 0;
+      padding: 2px;
+      border: 1px solid #777;
+      border-radius: 5px;
+      background: #333;
+      color: #fff;
+      font-size: 16px;
+      text-align: center;
+      appearance: textfield;
+    }
+
+    .preset-selector[type="number"]:hover {
+      appearance: auto;
+    }
+
+    .preset-action {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 32px;
+      margin: 0;
+      padding: 5px 8px;
+      border: 1px solid #777;
+      border-radius: 5px;
+      background: #333;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .preset-action:disabled {
+      cursor: default;
     }
 
     .chart-container {
@@ -176,34 +558,9 @@
   <h1>PSU Status</h1>
   <button id="resetLayoutBtn" style="margin-bottom: 10px;">Reset Layout</button>
   <div id="root">
-    <div id="temperaturesContainer" class="control-panel draggable resizable">
-
-      <h3 class="drag-handle">Temperatures</h3>
-      <p>System temp : <span id="system_temperature_celsius">-</span>°C / <span
-          id="system_temperature_fahrenheit">-</span>°F</p>
-      <p>Probe temp : <span id="probe_temperature_celsius">-</span><span
-          id="probe_temperature_celsius_unit">°C</span><span id="probe_temperature_separator"> / </span><span
-          id="probe_temperature_fahrenheit">-</span><span id="probe_temperature_fahrenheit_unit">°F</span></p>
-      <div class="resize-handle"></div>
-    </div>
-
-
     <div id="sensorChartContainer" class="control-panel draggable resizable">
       <h3 class="drag-handle">Realtime status</h3>
       <canvas id="sensorChart"></canvas>
-      <div class="resize-handle"></div>
-    </div>
-
-    <div id="powerSection" class="control-panel draggable resizable">
-      <h3 class="drag-handle">Voltage & Current</h3>
-      <p>Set Voltage: <span id="voltage_set">-</span> V</p>
-      <p>Set Current: <span id="current_set">-</span> A</p>
-      <p>Output Voltage: <span id="voltage_out">-</span> V</p>
-      <p>Output Current: <span id="current_out">-</span> A</p>
-      <p>Max Voltage: <span id="voltage_max">-</span> V</p>
-      <p>Max Current: <span id="current_max">-</span> A</p>
-      <p>Output Power: <span id="power_out">-</span> W</p>
-      <p>Input Voltage: <span id="voltage_in">-</span> V</p>
       <div class="resize-handle"></div>
     </div>
 
@@ -221,29 +578,82 @@
         </thead>
         <tbody id="presetBody"></tbody>
       </table>
-      <div class="resize-handle"></div>
-    </div>
-
-
-    <div id="modeContainer" class="control-panel draggable resizable">
-      <h3 class="drag-handle">Mode</h3>
-      <label><input type="radio" name="mode" value="CV" checked /> Constant Voltage (CV)</label><br>
-      <label><input type="radio" name="mode" value="CC" /> Constant Current (CC)</label>
+      <div class="setpoint-divider"></div>
+      <div class="preset-actions">
+        <input id="presetSelector" class="preset-selector" type="number" min="1" max="9" step="1" value="1" aria-label="Preset number" />
+        <button id="presetLoadButton" class="preset-action" type="button" disabled>LOAD</button>
+        <button id="presetStoreButton" class="preset-action" type="button" disabled>STORE</button>
+      </div>
       <div class="resize-handle"></div>
     </div>
 
 
     <div id="controlModeContainer" class="control-panel draggable resizable">
-      <h3 class="drag-handle">Controlmode</h3>
-      <button id="controlModeBtn" type="button" disabled>Toggle Control Mode</button><br>
-      <label><input type="radio" name="controlmode" value="LC" disabled /> Local Control (LC)</label><br>
-      <label><input type="radio" name="controlmode" value="NC" checked disabled /> Network Control (NC)</label>
+      <h3 class="drag-handle">Control</h3>
+      <div class="control-mode-options">
+        <button id="controlModeBtn" type="button" disabled>Toggle Control Mode</button>
+        <label><input type="radio" name="controlmode" value="LC" disabled /> Local Control (LC)</label>
+        <label><input type="radio" name="controlmode" value="NC" checked disabled /> Network Control (NC)</label>
+      </div>
+      <div class="setpoint-divider"></div>
+      <div class="setpoint-knobs">
+        <div class="setpoint-knob-column">
+          <h4 class="setpoint-knob-title voltage">Voltage</h4>
+          <div id="Ucontainer" style="width: 200px; height: 200px;"></div>
+          <div class="setpoint-actions">
+            <button id="voltageModeButton" class="setpoint-action setpoint-mode-indicator" type="button" disabled aria-pressed="false">CV</button>
+            <button id="voltageSetButton" class="setpoint-action" type="button">V-SET</button>
+          </div>
+        </div>
+        <div class="setpoint-output-control">
+          <h4 class="setpoint-knob-title output">Output</h4>
+          <button id="outputToggleButton" type="button" disabled aria-pressed="false">ON/OFF</button>
+        </div>
+        <div class="setpoint-knob-column">
+          <h4 class="setpoint-knob-title current">Current</h4>
+          <div id="Icontainer" style="width: 200px; height: 200px;"></div>
+          <div class="setpoint-actions">
+            <button id="currentModeButton" class="setpoint-action setpoint-mode-indicator" type="button" disabled aria-pressed="false">CC</button>
+            <button id="currentSetButton" class="setpoint-action" type="button">I-SET</button>
+          </div>
+        </div>
+      </div>
+      <div class="setpoint-divider"></div>
+      <div class="control-output-values">
+        <p>Output Voltage: <span id="voltage_out">-</span> V</p>
+        <p class="power-value-centered">Max Voltage: <span id="voltage_max">-</span> V</p>
+        <p class="power-value-right">Input Voltage: <span id="voltage_in">-</span> V</p>
+        <p>Output Current: <span id="current_out">-</span> A</p>
+        <p class="power-value-centered">Max Current: <span id="current_max">-</span> A</p>
+        <p class="power-value-right">Output Power: <span id="power_out">-</span> W</p>
+      </div>
+      <div class="control-energy-values">
+        <p>Ah: <span id="amp_hours">-</span></p>
+        <p>Wh: <span id="watt_hours">-</span></p>
+      </div>
+      <div class="setpoint-divider"></div>
+      <div class="control-temperature-values">
+        <p>System temp: <span id="system_temperature_celsius">-</span>°C / <span
+            id="system_temperature_fahrenheit">-</span>°F</p>
+        <p class="power-value-right">Probe temp: <span id="probe_temperature_celsius">-</span><span
+            id="probe_temperature_celsius_unit">°C</span><span id="probe_temperature_separator"> / </span><span
+            id="probe_temperature_fahrenheit">-</span><span id="probe_temperature_fahrenheit_unit">°F</span></p>
+      </div>
+      <div class="setpoint-divider"></div>
+      <div class="control-protection-values">
+        <label for="m0OvpInput">OVP
+          <input id="m0OvpInput" class="control-protection-input" type="number" min="0" step="0.01" disabled />
+        </label>
+        <label for="m0OcpInput">OCP
+          <input id="m0OcpInput" class="control-protection-input" type="number" min="0" step="0.01" disabled />
+        </label>
+      </div>
       <div class="resize-handle"></div>
     </div>
-
-
   </div>
   <script>
+    let updateStatusSetpoints = () => {};
+
     document.addEventListener('DOMContentLoaded', function () {
       const controlModeButton = document.getElementById('controlModeBtn');
       let currentControlMode = null;
@@ -258,6 +668,7 @@
           if (!selectedInput) throw new Error(`Unexpected control mode: ${mode}`);
           selectedInput.checked = true;
           currentControlMode = mode;
+          updateM0ProtectionAvailability();
           controlModeButton.disabled = false;
         })
         .catch(error => {
@@ -283,6 +694,10 @@
             if (mode !== selectedMode) throw new Error(`Unexpected control mode response: ${mode}`);
             document.querySelector(`input[name="controlmode"][value="${mode}"]`).checked = true;
             currentControlMode = mode;
+            updateM0ProtectionAvailability();
+            if (mode === 'LC') {
+              window.location.reload();
+            }
           })
           .catch(error => {
             console.error('Unable to change control mode:', error);
@@ -426,11 +841,150 @@
 
 
       const MAX_POINTS = 300;
+      const outputToggleButton = document.getElementById('outputToggleButton');
+      const m0OvpInput = document.getElementById('m0OvpInput');
+      const m0OcpInput = document.getElementById('m0OcpInput');
 
-      const socketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const socket = new WebSocket(socketProtocol + '//' + window.location.host + '/ws_ridenstatus');
+      function updateM0ProtectionAvailability() {
+        const enabled = currentControlMode === 'NC' && document.body.classList.contains('status-connected');
+        m0OvpInput.disabled = !enabled;
+        m0OcpInput.disabled = !enabled;
+        if (currentControlMode === 'LC') {
+          for (const input of [m0OvpInput, m0OcpInput]) {
+            input.value = '';
+            input.dataset.serverValue = '';
+            input.dataset.pending = 'false';
+          }
+        }
+      }
 
-      socket.onmessage = function (event) {
+      function syncM0ProtectionInput(input, value, max) {
+        if (currentControlMode !== 'NC') {
+          input.value = '';
+          input.dataset.serverValue = '';
+          input.dataset.pending = 'false';
+          return;
+        }
+        const parsedValue = Number(value);
+        const parsedMax = Number(max);
+        if (!Number.isFinite(parsedValue)) return;
+        if (Number.isFinite(parsedMax) && parsedMax > 0) {
+          input.max = String(parsedMax);
+        }
+        input.dataset.serverValue = parsedValue.toFixed(2);
+        if (input.dataset.pending === 'true') {
+          const pendingValue = Number(input.value);
+          if (Number.isFinite(pendingValue) && Math.abs(pendingValue - parsedValue) <= 0.005) {
+            input.dataset.pending = 'false';
+            input.value = parsedValue.toFixed(2);
+          }
+        } else if (document.activeElement !== input) {
+          input.value = parsedValue.toFixed(2);
+        }
+      }
+
+      async function commitM0ProtectionInput(input, endpoint) {
+        const value = Number(input.value.trim());
+        const max = Number(input.max);
+        if (!Number.isFinite(value) || value < 0 || !Number.isFinite(max) || value > max) {
+          input.reportValidity();
+          input.dataset.pending = 'false';
+          input.value = input.dataset.serverValue || '';
+          return;
+        }
+
+        input.dataset.pending = 'true';
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ value: value.toFixed(2) })
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+        } catch (error) {
+          console.error(`Unable to update ${input.id}:`, error);
+          input.dataset.pending = 'false';
+          input.value = input.dataset.serverValue || '';
+          alert(`Unable to update ${input.id}: ${error.message}`);
+        }
+      }
+
+      m0OvpInput.addEventListener('input', () => { m0OvpInput.dataset.pending = 'true'; });
+      m0OcpInput.addEventListener('input', () => { m0OcpInput.dataset.pending = 'true'; });
+      m0OvpInput.addEventListener('change', () => commitM0ProtectionInput(m0OvpInput, '/set_m0_ovp'));
+      m0OcpInput.addEventListener('change', () => commitM0ProtectionInput(m0OcpInput, '/set_m0_ocp'));
+
+      const presetSelector = document.getElementById('presetSelector');
+      const presetLoadButton = document.getElementById('presetLoadButton');
+      const presetStoreButton = document.getElementById('presetStoreButton');
+
+      async function sendPresetAction(action) {
+        const index = Number(presetSelector.value);
+        if (!Number.isInteger(index) || index < 1 || index > 9) {
+          presetSelector.reportValidity();
+          return;
+        }
+
+        presetLoadButton.disabled = true;
+        presetStoreButton.disabled = true;
+        try {
+          const response = await fetch(`/preset/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ index: String(index) })
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+        } catch (error) {
+          console.error(`Unable to ${action} preset:`, error);
+          alert(`Unable to ${action} preset: ${error.message}`);
+        } finally {
+          const connected = document.body.classList.contains('status-connected');
+          presetLoadButton.disabled = !connected;
+          presetStoreButton.disabled = !connected;
+        }
+      }
+
+      presetLoadButton.addEventListener('click', () => sendPresetAction('load'));
+      presetStoreButton.addEventListener('click', () => sendPresetAction('store'));
+
+      outputToggleButton.addEventListener('click', async () => {
+        outputToggleButton.disabled = true;
+        try {
+          const response = await fetch('/toggle_out');
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+        } catch (error) {
+          console.error('Unable to toggle output:', error);
+          alert(`Unable to toggle output: ${error.message}`);
+        } finally {
+          outputToggleButton.disabled = !document.body.classList.contains('status-connected');
+        }
+      });
+
+      try {
+        const socketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socket = new WebSocket(socketProtocol + '//' + window.location.host + '/ws_ridenstatus');
+        socket.addEventListener('open', () => {
+          document.body.classList.add('status-connected');
+          outputToggleButton.disabled = false;
+          updateM0ProtectionAvailability();
+          presetLoadButton.disabled = false;
+          presetStoreButton.disabled = false;
+        });
+        socket.addEventListener('close', () => {
+          document.body.classList.remove('status-connected');
+          outputToggleButton.disabled = true;
+          updateM0ProtectionAvailability();
+          presetLoadButton.disabled = true;
+          presetStoreButton.disabled = true;
+        });
+
+        socket.onmessage = function (event) {
         let data;
         try {
           data = JSON.parse(event.data);
@@ -438,6 +992,13 @@
           console.error('Invalid status data received:', error);
           return;
         }
+
+        updateStatusSetpoints(data);
+        syncM0ProtectionInput(m0OvpInput, data.m0_ovp, data.voltage_max);
+        syncM0ProtectionInput(m0OcpInput, data.m0_ocp, data.current_max);
+        const outputOn = Boolean(data.output_on);
+        outputToggleButton.classList.toggle('is-on', outputOn);
+        outputToggleButton.setAttribute('aria-pressed', String(outputOn));
 
         if (chart) {
           const now = new Date().getTime();
@@ -484,14 +1045,16 @@
         document.getElementById('probe_temperature_celsius_unit').hidden = probeUnavailable;
         document.getElementById('probe_temperature_separator').hidden = probeUnavailable;
         document.getElementById('probe_temperature_fahrenheit_unit').hidden = probeUnavailable;
-        document.getElementById('voltage_set').textContent = data.voltage_set;
-        document.getElementById('current_set').textContent = data.current_set;
         document.getElementById('voltage_out').textContent = data.voltage_out;
         document.getElementById('current_out').textContent = data.current_out;
         document.getElementById('power_out').textContent = data.power_out;
         document.getElementById('voltage_in').textContent = data.voltage_in;
         document.getElementById('voltage_max').textContent = data.voltage_max;
         document.getElementById('current_max').textContent = data.current_max;
+        const ampHours = data.ah === null ? NaN : Number(data.ah);
+        const wattHours = data.wh === null ? NaN : Number(data.wh);
+        document.getElementById('amp_hours').textContent = Number.isFinite(ampHours) ? ampHours.toFixed(3) : '-';
+        document.getElementById('watt_hours').textContent = Number.isFinite(wattHours) ? wattHours.toFixed(3) : '-';
 
         const tableBody = document.getElementById("presetBody");
         tableBody.innerHTML = "";
@@ -509,28 +1072,25 @@
         document.getElementById('presetsSection').style.display = 'block';
       };
 
-      socket.onerror = function (event) {
-        console.error('Status WebSocket connection failed:', event);
-      };
+        socket.onerror = function (event) {
+          console.error('Status WebSocket connection failed:', event);
+        };
+      } catch (error) {
+        console.error('Unable to initialize the status WebSocket:', error);
+      }
 
 
 
       const GRID_SIZE = 10;
       const defaultLayout = {
-        "temperaturesContainer": {
-          "x": 150, "y": 7.133331298828125, "width": 340, "height": 110
-        },
         "sensorChartContainer": {
           "x": -530, "y": 7.133331298828125, "width": 450, "height": 460
         },
-        "powerSection": {
-          "x": -70, "y": 7.133331298828125, "width": 210, "height": 310
-        },
         "presetsSection": {
-          "x": 150, "y": 127.13333129882812, "width": 340, "height": 340
+          "x": 150, "y": 127.13333129882812, "width": 340, "height": 420
         },
-        "modeContainer": {
-          "x": -70, "y": 327.1333312988281, "width": 210, "height": 140
+        "controlModeContainer": {
+          "x": 150, "y": 557.1333312988281, "width": 540, "height": 720
         }
       }
 
@@ -558,6 +1118,19 @@
             layout = JSON.parse(localStorageLayout || '{}');
           else
             layout = defaultLayout;
+        }
+        const presetLayout = layout.presetsSection;
+        const controlLayout = layout.controlModeContainer;
+        if (presetLayout && presetLayout.height < 420) {
+          presetLayout.height = 420;
+          if (controlLayout) {
+            const panelsOverlapHorizontally = presetLayout.x < controlLayout.x + controlLayout.width &&
+              controlLayout.x < presetLayout.x + presetLayout.width;
+            const minimumControlY = presetLayout.y + presetLayout.height + 10;
+            if (panelsOverlapHorizontally && controlLayout.y < minimumControlY) {
+              controlLayout.y = minimumControlY;
+            }
+          }
         }
         for (const id in layout) {
           const el = document.getElementById(id);
@@ -668,6 +1241,347 @@
 
     });
 
+    document.addEventListener('DOMContentLoaded', function () {
+      const svgNamespace = 'http://www.w3.org/2000/svg';
+
+      function createSvgElement(tagName, attributes) {
+        const element = document.createElementNS(svgNamespace, tagName);
+        Object.entries(attributes).forEach(([name, value]) => element.setAttribute(name, value));
+        return element;
+      }
+
+      function initializeSetpointControl(options) {
+        const container = document.getElementById(options.containerId);
+        const setButton = document.getElementById(options.setButtonId);
+        let currentMax = options.max;
+        let currentValue = 0;
+        let updateTimeout = null;
+        let syncHoldUntil = 0;
+        let hasUncommittedValue = false;
+        let lastReportedValue = null;
+
+        container.classList.add('setpoint-control');
+        container.replaceChildren();
+
+        const svg = createSvgElement('svg', {
+          class: 'setpoint-knob',
+          viewBox: '0 0 200 200',
+          role: 'slider',
+          tabindex: '0',
+          'aria-label': `${options.name} setpoint`,
+          'aria-valuemin': '0',
+          'aria-valuemax': currentMax,
+          'aria-valuenow': currentValue
+        });
+        const track = createSvgElement('path', { class: 'setpoint-knob-track' });
+        const progress = createSvgElement('path', {
+          class: 'setpoint-knob-progress',
+          stroke: options.color
+        });
+        const marks = createSvgElement('g', {});
+        const labels = createSvgElement('g', {});
+        const pointer = createSvgElement('line', {
+          class: 'setpoint-knob-pointer',
+          stroke: options.color,
+          x1: '100',
+          y1: '100'
+        });
+        const center = createSvgElement('circle', {
+          cx: '100',
+          cy: '100',
+          r: '5',
+          fill: options.color
+        });
+        svg.append(track, progress, marks, labels, pointer, center);
+        container.appendChild(svg);
+
+        const inputRow = document.createElement('div');
+        inputRow.className = 'setpoint-input-row';
+        const input = document.createElement('input');
+        input.className = 'setpoint-input';
+        input.type = 'number';
+        input.min = '0';
+        input.max = String(currentMax);
+        input.step = '0.01';
+        input.setAttribute('aria-label', `${options.name} setpoint value`);
+        const unit = document.createElement('span');
+        unit.className = 'setpoint-unit';
+        unit.textContent = options.unit;
+<!--        inputRow.append(input, unit); -->
+        inputRow.append(input);
+        container.appendChild(inputRow);
+
+        function pointAt(angle, radius) {
+          const radians = angle * Math.PI / 180;
+          return {
+            x: 100 + Math.cos(radians) * radius,
+            y: 100 + Math.sin(radians) * radius
+          };
+        }
+
+        function arcPath(startAngle, endAngle, radius) {
+          const start = pointAt(startAngle, radius);
+          const end = pointAt(endAngle, radius);
+          const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+          return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+        }
+
+        function renderScale() {
+          track.setAttribute('d', arcPath(120, 420, 76));
+          marks.replaceChildren();
+          labels.replaceChildren();
+
+          const values = [];
+          for (let value = 0; value < currentMax; value += options.minorInterval) {
+            values.push(value);
+          }
+          values.push(currentMax);
+          const lastMajorTick = Math.floor(currentMax / options.majorInterval) * options.majorInterval;
+          const maxLabelIsCrowded = currentMax > lastMajorTick &&
+            currentMax - lastMajorTick < options.minorInterval;
+
+          values.forEach(value => {
+            const angle = 120 + 300 * value / currentMax;
+            const major = Math.abs(value / options.majorInterval - Math.round(value / options.majorInterval)) < 0.0001 ||
+              value === currentMax;
+            const inner = pointAt(angle, major ? 84 : 87);
+            const outer = pointAt(angle, 94);
+            marks.appendChild(createSvgElement('line', {
+              class: major ? 'setpoint-knob-mark major' : 'setpoint-knob-mark',
+              x1: inner.x,
+              y1: inner.y,
+              x2: outer.x,
+              y2: outer.y
+            }));
+
+            if (major && !(value === currentMax && maxLabelIsCrowded)) {
+              const labelPoint = pointAt(angle, 102);
+              const label = createSvgElement('text', {
+                class: 'setpoint-knob-label',
+                x: labelPoint.x,
+                y: labelPoint.y
+              });
+              label.textContent = Number.isInteger(value) ? String(value) : value.toFixed(1);
+              labels.appendChild(label);
+            }
+          });
+        }
+
+        function drawValue(value) {
+          currentValue = Math.max(0, Math.min(value, currentMax));
+          const angle = 120 + 300 * currentValue / currentMax;
+          const pointerEnd = pointAt(angle, 56);
+          pointer.setAttribute('x2', pointerEnd.x);
+          pointer.setAttribute('y2', pointerEnd.y);
+          progress.setAttribute('d', currentValue > 0 ? arcPath(120, angle, 76) : '');
+          svg.setAttribute('aria-valuenow', currentValue.toFixed(2));
+        }
+
+        function setValue(value) {
+          drawValue(value);
+          input.value = currentValue.toFixed(2);
+        }
+
+        function updatePendingState() {
+          hasUncommittedValue = lastReportedValue === null ||
+            Math.abs(currentValue - lastReportedValue) > 0.0001;
+          setButton.classList.toggle('setpoint-action--pending', hasUncommittedValue);
+        }
+
+        function scheduleUpdate(value) {
+          syncHoldUntil = Date.now() + 2000;
+          clearTimeout(updateTimeout);
+          updateTimeout = setTimeout(() => {
+            fetch(options.endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({ value: String(value) })
+            })
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+              })
+              .catch(error => {
+                console.error(`Unable to set ${options.name}:`, error);
+                syncHoldUntil = 0;
+                updatePendingState();
+                alert(`Unable to set ${options.name}: ${error.message}`);
+              });
+          }, 300);
+        }
+
+        function commitValue() {
+          const valueText = input.value.trim();
+          const value = Number(valueText);
+          if (valueText === '' || !Number.isFinite(value) || value < 0 || value > currentMax) {
+            return;
+          }
+          drawValue(value);
+          hasUncommittedValue = false;
+          setButton.classList.remove('setpoint-action--pending');
+          scheduleUpdate(value);
+        }
+
+        function updateFromInput() {
+          const valueText = input.value.trim();
+          const value = Number(valueText);
+          if (valueText === '' || !Number.isFinite(value) || value < 0 || value > currentMax) {
+            return;
+          }
+          drawValue(value);
+          updatePendingState();
+        }
+
+        function pointerAngleAt(event) {
+          const bounds = svg.getBoundingClientRect();
+          const x = (event.clientX - bounds.left) * 200 / bounds.width - 100;
+          const y = (event.clientY - bounds.top) * 200 / bounds.height - 100;
+          let angle = Math.atan2(y, x) * 180 / Math.PI;
+          if (angle < 0) angle += 360;
+          return angle;
+        }
+
+        function updateFromPointer(event) {
+          const angle = pointerAngleAt(event);
+          let direction = 0;
+          if (lastPointerAngle !== null) {
+            direction = angle - lastPointerAngle;
+            if (direction > 180) direction -= 360;
+            else if (direction < -180) direction += 360;
+          }
+          lastPointerAngle = angle;
+          dragAngleDelta += direction;
+          const value = Math.max(0, Math.min(currentMax,
+            dragStartValue + dragAngleDelta * currentMax / 300));
+          const snappedValue = Math.round(value * 10) / 10;
+          setValue(snappedValue);
+          updatePendingState();
+        }
+
+        renderScale();
+        setValue(currentValue);
+
+        input.addEventListener('pointerdown', event => event.stopPropagation());
+        input.addEventListener('input', updateFromInput);
+        input.addEventListener('change', updateFromInput);
+        document.getElementById(options.setButtonId).addEventListener('click', commitValue);
+
+        let pointerDown = false;
+        let dragging = false;
+        let lastPointerAngle = null;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragStartValue = 0;
+        let dragAngleDelta = 0;
+        svg.addEventListener('pointerdown', event => {
+          pointerDown = true;
+          dragging = false;
+          dragStartX = event.clientX;
+          dragStartY = event.clientY;
+          lastPointerAngle = pointerAngleAt(event);
+          dragStartValue = currentValue;
+          dragAngleDelta = 0;
+          svg.setPointerCapture(event.pointerId);
+          event.preventDefault();
+        });
+        svg.addEventListener('pointermove', event => {
+          if (!pointerDown) return;
+          if (!dragging) {
+            const distance = Math.hypot(event.clientX - dragStartX, event.clientY - dragStartY);
+            if (distance < 4) return;
+            dragging = true;
+          }
+          updateFromPointer(event);
+        });
+        const endDrag = () => {
+          pointerDown = false;
+          dragging = false;
+          lastPointerAngle = null;
+          dragAngleDelta = 0;
+        };
+        svg.addEventListener('pointerup', endDrag);
+        svg.addEventListener('pointercancel', endDrag);
+
+        svg.addEventListener('keydown', event => {
+          const increment = event.shiftKey ? options.majorInterval : 0.1;
+          let value;
+          if (event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'PageUp') {
+            value = currentValue + (event.key === 'PageUp' ? options.majorInterval : increment);
+          } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown' || event.key === 'PageDown') {
+            value = currentValue - (event.key === 'PageDown' ? options.majorInterval : increment);
+          } else if (event.key === 'Home') {
+            value = 0;
+          } else if (event.key === 'End') {
+            value = currentMax;
+          } else {
+            return;
+          }
+          event.preventDefault();
+          const snappedValue = Math.round(Math.max(0, Math.min(value, currentMax)) * 10) / 10;
+          setValue(snappedValue);
+          updatePendingState();
+        });
+
+        return function (value, max) {
+          const parsedMax = Number(max);
+          if (!Number.isFinite(parsedMax) || parsedMax <= 0) {
+            return;
+          }
+          if (parsedMax !== currentMax) {
+            currentMax = parsedMax;
+            input.max = String(currentMax);
+            svg.setAttribute('aria-valuemax', String(currentMax));
+            renderScale();
+          }
+
+          const parsedValue = Number(value);
+          if (Number.isFinite(parsedValue)) {
+            lastReportedValue = parsedValue;
+            if (hasUncommittedValue && Math.abs(currentValue - parsedValue) <= 0.0001) {
+              setValue(parsedValue);
+              hasUncommittedValue = false;
+              setButton.classList.remove('setpoint-action--pending');
+            } else if (!hasUncommittedValue && Date.now() >= syncHoldUntil) {
+              setValue(parsedValue);
+            }
+          }
+        };
+      }
+
+      const updateVoltageSetpoint = initializeSetpointControl({
+        containerId: 'Ucontainer',
+        endpoint: '/set_v',
+        setButtonId: 'voltageSetButton',
+        name: 'voltage',
+        unit: 'V',
+        max: 60,
+        color: '#77FF00',
+        majorInterval: 10,
+        minorInterval: 2
+      });
+      const updateCurrentSetpoint = initializeSetpointControl({
+        containerId: 'Icontainer',
+        endpoint: '/set_i',
+        setButtonId: 'currentSetButton',
+        name: 'current',
+        unit: 'A',
+        max: 24,
+        color: '#60bcd4',
+        majorInterval: 6,
+        minorInterval: 1
+      });
+      const voltageModeButton = document.getElementById('voltageModeButton');
+      const currentModeButton = document.getElementById('currentModeButton');
+
+      updateStatusSetpoints = function (data) {
+        updateVoltageSetpoint(data.voltage_set, data.voltage_max);
+        updateCurrentSetpoint(data.current_set, data.current_max);
+        const outputMode = Number(data.output_mode);
+        voltageModeButton.setAttribute('aria-pressed', String(outputMode === 0));
+        currentModeButton.setAttribute('aria-pressed', String(outputMode === 1));
+      };
+    });
   </script>
 </body>
 

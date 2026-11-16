@@ -106,9 +106,40 @@ bool RidenStatusClass::queueSetCurrent(double current)
     return enqueueCommand(CommandType::SetCurrent, current);
 }
 
+bool RidenStatusClass::queueSetM0Ovp(double voltage)
+{
+    return enqueueCommand(CommandType::SetM0Ovp, voltage);
+}
+
+bool RidenStatusClass::queueSetM0Ocp(double current)
+{
+    return enqueueCommand(CommandType::SetM0Ocp, current);
+}
+
 bool RidenStatusClass::queueToggleOutput()
 {
     return enqueueCommand(CommandType::ToggleOutput);
+}
+
+bool RidenStatusClass::queueLoadPreset(uint8_t presetIndex)
+{
+    if (presetIndex < 1 || presetIndex > NUMBER_OF_PRESETS) {
+        return false;
+    }
+    return enqueueCommand(CommandType::LoadPreset, presetIndex);
+}
+
+bool RidenStatusClass::queueStorePreset(uint8_t presetIndex)
+{
+    if (presetIndex < 1 || presetIndex > NUMBER_OF_PRESETS) {
+        return false;
+    }
+    return enqueueCommand(CommandType::StorePreset, presetIndex);
+}
+
+bool RidenStatusClass::queueRefreshPresets()
+{
+    return enqueueCommand(CommandType::RefreshPresets);
 }
 
 bool RidenStatusClass::enqueueCommand(CommandType type, double value)
@@ -146,10 +177,40 @@ void RidenStatusClass::processCommand(const Command& command)
     bool success = false;
     switch (command.type) {
     case CommandType::SetVoltage:
-        success = _modbus->set_voltage_set(command.value);
+        success = _modbus->set_voltage_set(command.value) &&
+            _modbus->set_preset_voltage_out(0, command.value);
+        if (success) {
+            portENTER_CRITICAL(&_statusMux);
+            _allValues.voltage_set = command.value;
+            _allValues.preset_m0.voltage = command.value;
+            portEXIT_CRITICAL(&_statusMux);
+        }
         break;
     case CommandType::SetCurrent:
-       success = _modbus->set_current_set(command.value);
+        success = _modbus->set_current_set(command.value) &&
+            _modbus->set_preset_current_out(0, command.value);
+        if (success) {
+            portENTER_CRITICAL(&_statusMux);
+            _allValues.current_set = command.value;
+            _allValues.preset_m0.current = command.value;
+            portEXIT_CRITICAL(&_statusMux);
+        }
+        break;
+    case CommandType::SetM0Ovp:
+        success = _modbus->set_preset_over_voltage_protection(0, command.value);
+        if (success) {
+            portENTER_CRITICAL(&_statusMux);
+            _allValues.preset_m0.over_voltage_protection = command.value;
+            portEXIT_CRITICAL(&_statusMux);
+        }
+        break;
+    case CommandType::SetM0Ocp:
+        success = _modbus->set_preset_over_current_protection(0, command.value);
+        if (success) {
+            portENTER_CRITICAL(&_statusMux);
+            _allValues.preset_m0.over_current_protection = command.value;
+            portEXIT_CRITICAL(&_statusMux);
+        }
         break;
     case CommandType::ToggleOutput: {
         bool outputOn;
@@ -157,6 +218,62 @@ void RidenStatusClass::processCommand(const Command& command)
             success = _modbus->set_output_on(!outputOn);
         break;
     }
+    case CommandType::LoadPreset: {
+        success = _modbus->set_preset(static_cast<uint8_t>(command.value));
+        Preset loadedSettings;
+        if (success) {
+            success = _modbus->get_preset(0, loadedSettings);
+        }
+        if (success) {
+            portENTER_CRITICAL(&_statusMux);
+            _allValues.preset_m0 = loadedSettings;
+            portEXIT_CRITICAL(&_statusMux);
+        }
+        break;
+    }
+    case CommandType::StorePreset: {
+        const uint8_t presetIndex = static_cast<uint8_t>(command.value);
+        Preset presetSettings;
+        double voltageSetpoint;
+        double currentSetpoint;
+        double m0Ovp;
+        double m0Ocp;
+        Preset storedSettings;
+        success = _modbus->get_preset_over_voltage_protection(0, m0Ovp) &&
+            _modbus->get_preset_over_current_protection(0, m0Ocp);
+        if (success) {
+            success = _modbus->get_voltage_set(voltageSetpoint);
+        }
+        if (success) {
+            success = _modbus->get_current_set(currentSetpoint);
+        }
+        if (success) {
+            success = _modbus->get_preset(presetIndex - 1, presetSettings);
+        }
+        if (success) {
+            presetSettings.voltage = voltageSetpoint;
+            presetSettings.current = currentSetpoint;
+            presetSettings.over_voltage_protection = m0Ovp;
+            presetSettings.over_current_protection = m0Ocp;
+            success = _modbus->set_preset(presetIndex - 1, presetSettings);
+        }
+        if (success) {
+            success = _modbus->get_preset(presetIndex - 1, storedSettings);
+        }
+        if (success) {
+            portENTER_CRITICAL(&_statusMux);
+            _allValues.presets[presetIndex - 1] = storedSettings;
+            portEXIT_CRITICAL(&_statusMux);
+        }
+        break;
+    }
+    case CommandType::RefreshPresets:
+        if (_modbus->is_connected()) {
+            success = updateStatus(true);
+        } else if (_modbus->networkControlRequested()) {
+            success = enqueueCommand(CommandType::RefreshPresets);
+        }
+        break;
     }
 
     if (!success) {
@@ -192,6 +309,8 @@ String RidenStatusClass::_serializeAllValues(const RidenDongle::AllValues& v) {
     json += "\"wh\":" + jsonNumber(v.wh) + ",";
     json += "\"voltage_max\":" + String(_modbus->get_max_voltage()) + ",";
     json += "\"current_max\":" + String(_modbus->get_max_current()) + ",";
+    json += "\"m0_ovp\":" + jsonNumber(v.preset_m0.over_voltage_protection) + ",";
+    json += "\"m0_ocp\":" + jsonNumber(v.preset_m0.over_current_protection) + ",";
     json += "\"is_take_ok\":" + String(v.is_take_ok ? "true" : "false") + ",";
     json += "\"is_take_out\":" + String(v.is_take_out ? "true" : "false") + ",";
     json += "\"is_power_on_boot\":" + String(v.is_power_on_boot ? "true" : "false") + ",";

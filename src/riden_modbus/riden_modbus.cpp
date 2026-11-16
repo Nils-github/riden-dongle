@@ -220,6 +220,7 @@ bool RidenModbus::get_all_values(AllValues &all_values, bool subset)
     all_values.calibration.I_OUT_SCALE = values[+Register::I_OUT_SCALE];
     all_values.calibration.I_BACK_ZERO = values[+Register::I_BACK_ZERO];
     all_values.calibration.I_BACK_SCALE = values[+Register::I_BACK_SCALE];
+    values_to_preset(all_values.preset_m0, &(values[+Register::M0_V]));
     // Presets - M0 is ignored
     for (int index = 0; index < NUMBER_OF_PRESETS; index++) {
         values_to_preset(all_values.presets[index], &(values[+Register::M0_V + 4 * (index + 1)]));
@@ -554,7 +555,7 @@ bool RidenModbus::set_preset(const uint8_t index, const Preset &preset)
     }
     uint16_t values[4];
     preset_to_values(values, preset);
-    Register reg = Register(+Register::M0_V + 4 * index);
+    Register reg = Register(+Register::M0_V + 4 * (index + 1));
     return write_holding_registers(reg, values, 4);
 }
 
@@ -563,7 +564,7 @@ bool RidenModbus::get_preset(const uint8_t index, Preset &preset)
     if (index >= NUMBER_OF_PRESETS) {
         return false;
     }
-    Register reg = Register(+Register::M0_V + 4 * index);
+    Register reg = Register(+Register::M0_V + 4 * (index + 1));
     uint16_t values[4];
     if (!read_holding_registers(reg, values, 4)) {
         return false;

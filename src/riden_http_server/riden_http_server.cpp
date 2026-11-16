@@ -55,6 +55,17 @@ static bool parseFormNumber(AsyncWebServerRequest *request, const char *name, do
     return end != start && *end == '\0' && std::isfinite(value);
 }
 
+static bool parsePresetIndex(AsyncWebServerRequest *request, uint8_t &index)
+{
+    double value;
+    if (!parseFormNumber(request, "index", value) || value < 1 ||
+        value > NUMBER_OF_PRESETS || std::floor(value) != value) {
+        return false;
+    }
+    index = static_cast<uint8_t>(value);
+    return true;
+}
+
 static String voltage_to_string(double voltage)
 {
     if (voltage < 1) {
@@ -188,8 +199,16 @@ bool RidenHttpServer::begin()
                 { this->handle_set_i(request); });
     _server->on("/set_v", HTTP_POST, [this](AsyncWebServerRequest *request)
                 { this->handle_set_v(request); });
+    _server->on("/set_m0_ovp", HTTP_POST, [this](AsyncWebServerRequest *request)
+                { this->handle_set_m0_ovp(request); });
+    _server->on("/set_m0_ocp", HTTP_POST, [this](AsyncWebServerRequest *request)
+                { this->handle_set_m0_ocp(request); });
     _server->on("/toggle_out", [this](AsyncWebServerRequest *request)
                 { this->handle_toggle_out(request); });
+    _server->on("/preset/load", HTTP_POST, [this](AsyncWebServerRequest *request)
+                { this->handle_preset_load_post(request); });
+    _server->on("/preset/store", HTTP_POST, [this](AsyncWebServerRequest *request)
+                { this->handle_preset_store_post(request); });
     _server->on("/controlmode", HTTP_GET, [this](AsyncWebServerRequest *request)
                 { this->handle_control_mode_get(request); });
     _server->on("/controlmode", HTTP_POST, [this](AsyncWebServerRequest *request)
@@ -616,10 +635,66 @@ void RidenHttpServer::handle_set_v(AsyncWebServerRequest *request)
     }
 }
 
+void RidenHttpServer::handle_set_m0_ovp(AsyncWebServerRequest *request)
+{
+    double voltage;
+    if (!parseFormNumber(request, "value", voltage) || voltage < 0 || voltage > _modbus->get_max_voltage()) {
+        request->send(400, "text/plain", "Invalid OVP value");
+        return;
+    }
+    if (_modbus->is_connected() && RidenStatus.queueSetM0Ovp(voltage)) {
+        request->send(202, "text/plain", "OVP command queued");
+    } else {
+        request->send(503, "text/plain", "Power supply unavailable or command queue full");
+    }
+}
+
+void RidenHttpServer::handle_set_m0_ocp(AsyncWebServerRequest *request)
+{
+    double current;
+    if (!parseFormNumber(request, "value", current) || current < 0 || current > _modbus->get_max_current()) {
+        request->send(400, "text/plain", "Invalid OCP value");
+        return;
+    }
+    if (_modbus->is_connected() && RidenStatus.queueSetM0Ocp(current)) {
+        request->send(202, "text/plain", "OCP command queued");
+    } else {
+        request->send(503, "text/plain", "Power supply unavailable or command queue full");
+    }
+}
+
 void RidenHttpServer::handle_toggle_out(AsyncWebServerRequest *request)
 {
     if (_modbus->is_connected() && RidenStatus.queueToggleOutput()) {
         request->send(202, "text/plain", "Command queued");
+    } else {
+        request->send(503, "text/plain", "Power supply unavailable or command queue full");
+    }
+}
+
+void RidenHttpServer::handle_preset_load_post(AsyncWebServerRequest *request)
+{
+    uint8_t index;
+    if (!parsePresetIndex(request, index)) {
+        request->send(400, "text/plain", "Invalid preset index");
+        return;
+    }
+    if (_modbus->is_connected() && RidenStatus.queueLoadPreset(index)) {
+        request->send(202, "text/plain", "Preset load queued");
+    } else {
+        request->send(503, "text/plain", "Power supply unavailable or command queue full");
+    }
+}
+
+void RidenHttpServer::handle_preset_store_post(AsyncWebServerRequest *request)
+{
+    uint8_t index;
+    if (!parsePresetIndex(request, index)) {
+        request->send(400, "text/plain", "Invalid preset index");
+        return;
+    }
+    if (_modbus->is_connected() && RidenStatus.queueStorePreset(index)) {
+        request->send(202, "text/plain", "Preset store queued");
     } else {
         request->send(503, "text/plain", "Power supply unavailable or command queue full");
     }
@@ -644,6 +719,11 @@ void RidenHttpServer::handle_control_mode_post(AsyncWebServerRequest *request)
     }
 
     _modbus->requestNetworkControl(mode == "NC");
+    if (mode == "NC" && !RidenStatus.queueRefreshPresets()) {
+        request->send(503, "text/plain", "Command queue full");
+        return;
+    }
+
     request->send(202, "text/plain", mode);
 }
 
