@@ -1,6 +1,8 @@
 #include "RidenStatus.h"
 #include <assert.h>
 #include <LittleFS.h>
+#include <NetworkUtils.h>
+#include <WifiManager.h>
 #include <riden_modbus/riden_modbus_registers.h>
 #include <cmath>
 
@@ -32,7 +34,7 @@ void RidenStatusClass::begin(AsyncWebServer *server, RidenModbus *modbus, const 
             break;
         case WS_EVT_CONNECT:
             log_printf("WebSocket client #%lu connected from %s\n", client->id(), client->remoteIP().toString().c_str());
-            client->setCloseClientOnQueueFull(false);
+            client->setCloseClientOnQueueFull(true);
             break;
         case WS_EVT_DISCONNECT:
             log_printf("WebSocket client #%lu disconnected\n", client->id());
@@ -85,6 +87,16 @@ void RidenStatusClass::loop()
     Command command;
     if (dequeueCommand(command))
         processCommand(command);
+
+    const bool wifiAvailable = WifiManager.isEnabled() &&
+        (WiFi.status() == WL_CONNECTED || wifiAccessPointActive());
+    const bool networkAvailable = wifiAvailable || ethernetConnected();
+    if (!networkAvailable) {
+        if (_ws != nullptr && getConnectionCount() > 0) {
+            _ws->closeAll(1001, "Network connection lost");
+        }
+        return;
+    }
 
     unsigned long now = millis();
     if (now - lasttime > 200) {
