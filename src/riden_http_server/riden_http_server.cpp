@@ -189,6 +189,8 @@ bool RidenHttpServer::begin()
                 { this->handle_psu_get(request); });
     _server->on("/config", HTTP_GET, [this](AsyncWebServerRequest *request)
                 { this->_handlePsuConfigPage(request); });
+    _server->on("/config", HTTP_POST, [this](AsyncWebServerRequest *request)
+                { this->handle_config_post(request); });
     _server->on("/config/", HTTP_POST, [this](AsyncWebServerRequest *request)
                 { this->handle_config_post(request); });
     _server->on("/control/", HTTP_GET, [this](AsyncWebServerRequest *request)
